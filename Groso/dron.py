@@ -12,7 +12,7 @@ class Dron:
     # *Constructor
     def __init__(self):
         self.id = 0
-        self.aleas = ""
+        self.alias = ""
         self.color = "Rojo"
         self.coordenada = Coordenada(1,1)
         self.token = ""
@@ -51,9 +51,14 @@ class Dron:
         return optima
     
     # * Funcion que transmite la posición al servidor
-    def enviar_mensaje(self, client, msg): 
-        msg.encode(FORMAT)
-        client.send(msg)
+    def enviar_mensaje(self, cliente, msg): 
+        message = msg.encode(FORMAT)
+        msg_length = len(message)
+        send_length = str(msg_length).encode(FORMAT)
+        send_length += b' ' * (HEADER - len(send_length))
+        cliente.send(send_length)
+        cliente.send(message)
+    
         
     # *Función que comunica con el servidor(engine) y hace lo que le mande
     def conectar_engine(self, server, port):              
@@ -83,7 +88,7 @@ class Dron:
             
         return client
                 
-# *Función que comunica con el servidor(registri)
+    # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
         #Establece conexión con el servidor (engine)
         try:
@@ -96,43 +101,37 @@ class Dron:
             print("No se ha podido establecer conexión(engine)")
         
         return client
-            
-            
-################## MAIN ####################
 
-    def menu(self, server_reg, port_reg):
+    # *Menú del dron para interactuar con registry
+    def menu(self, server_reg, port_reg, cliente):
         
         opc = 0
-        while(opc!=4):
+        while(opc>4 or opc<1):
             print("Hola, soy un dron, qué operación desea realizar?")
             print("[1] Dar de alta")
             print("[2] Editar perfil")
             print("[3] Dar de baja")
             print("[4] Desconectar")
+            opc=int(input())
             if(opc<1 or opc>4):
                 print("Opción no válida, inténtelo de nuevo")
-            opc=input()
         
         if (opc==1):
             exito = False
             while(exito==False):
-                id = 0
-                aleas = ""
+                alias = ""
                 print("Vamos a registrarme")
-                print("Introduce mi id")
-                while(id<0 or id>99):
-                    id = input()
-                    if(id<0 or id>99):
-                        print("Id no válido")
-                print("Introduce mi aleas")
-                aleas = input()
+                print("Introduce mi alias")
+                alias = input()
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
-                cliente = self.conectar_registri(server_reg, port_reg)
-                self.enviar_mensaje(cliente, id + "" + aleas)
+                self.enviar_mensaje(cliente, alias)
                 #Hemos enviado los datos y esperamos respuesta con nuestro token
-                while (self.token==""):
-                    print("Recibo del Servidor: ", cliente.recv(2048).decode(FORMAT))
-                    token=input()
+                while (token==""):
+                    long = cliente.recv(HEADER).decode(FORMAT)
+                    if long:
+                        long = int(long)
+                        token = cliente.recv(long).decode(FORMAT)
+                        print(token)    
                 token_manejable=token.split(" ")
                 #si nuestro token empieza con tkn hemos podido registrarnos, si no no y volvemos a introducir datos
                 if(token_manejable[0]=="tkn"):
@@ -145,27 +144,19 @@ class Dron:
         elif (opc==2):
             exito = False
             while(exito==False):
-                id = 0
-                aleas = ""
-                print("Vamos a editar nuestro perfil")
-                print("Introduce mi id nuevo")
-                while(id<0 or id>99):
-                    id = input()
-                    if(id<0 or id>99):
-                        print("Id no válido")
-                print("Introduce mi aleas nuevo")
-                aleas = input()
+                print("Introduce mi alias nuevo")
+                alias = input()
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
-                cliente = self.conectar_registri(server_reg, port_reg)
-                self.enviar_mensaje(cliente, id + "" + aleas)
+                self.enviar_mensaje(cliente, alias)
                 #Hemos enviado los datos y esperamos respuesta de si podemos editar
                 editado = True
                 while (editado == False):
-                    print("Recibo del Servidor: ", cliente.recv(2048).decode(FORMAT))
+                    print("Recibo del Servidor: ", cliente.recv(HEADER).decode(FORMAT))
                     edit=input()
                     if(edit == "ok"):
                         editado=True
                         exito=True
+                        self.alias=alias
                         print("Sus credenciales han sido modificadas con éxito")
                         cliente.close()
                     elif(edit == "Not exist"):
@@ -177,8 +168,7 @@ class Dron:
             exito = False
             while(exito==False):
                 #Conectamos con registri
-                cliente = self.conectar_registri(server_reg, port_reg)
-                self.enviar_mensaje(cliente, self.id + "" + self.aleas)
+                self.enviar_mensaje(cliente, self.id + "" + self.alias)
                 #Hemos enviado los datos y esperamos respuesta de si hemos dado de baja
                 baja = True
                 while (baja == False):
@@ -196,3 +186,14 @@ class Dron:
                         cliente.close()
         elif (opc==4):
             sys.exit(1)
+            
+            
+if (len(sys.argv) == 3):
+    SERVER = sys.argv[1]
+    PORT = int(sys.argv[2])
+    ADDR = (SERVER, PORT)
+    
+    dron = Dron()
+    
+    cliente_reg = dron.conectar_registri(SERVER,PORT)
+    dron.menu(SERVER,PORT, cliente_reg)
