@@ -1,56 +1,146 @@
-import socket
-from django.utils.crypto import get_random_string
 
-def generate_token():
-    get_random_string(length=20) #genera un token de longitud 20
+import socket 
+import threading
+import json
+import secrets
+import string
 
-def save_drone(alias, token):
-    
-    with open("BD.txt", "a") as file: #El "a" es para que se ponga en modo append
-        file.write(f"Alias: {alias}, Token: {token}\n")
 
-def Registry(port):
-    # Crea un socket TCP/IP
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+HEADER = 64
+PORT = 5051
+FORMAT = 'utf-8'
+FIN = "FIN"
+MAX_CONEXIONES = 8
+JSON_FILE = "BD.json"
+SERVER = "127.0.0.1"
+ADDR = (SERVER, PORT)
 
-    # Enlaza el socket al puerto especificado
-    server_address = ('localhost', port)
-    server_socket.bind(server_address)
+def send_message(message_to_send , conn):
+    message_bytes = message_to_send.encode(FORMAT)
+    message_length = len(message_bytes)
+    conn.send(str(message_length).encode(FORMAT))
+    conn.send(message_bytes)
 
-    # Escucha por conexiones entrantes
-    server_socket.listen(1)
-    print(f"AD_Registry escuchando en el puerto {port}...")
+def generate_random_token(length):
+    alphabet = string.ascii_letters + string.digits
+    token = ''.join(secrets.choice(alphabet) for i in range(length))
+    return token
 
+def save_drone_info(alias , id , token):
     try:
-        while True:
+        
+        with open(JSON_FILE, "r") as file:
+            data = json.load(file)
+    except FileNotFoundError:
+        data = {}  
+
+    if alias not in data:
+        data[alias] = {
+            "id": id,
+            "token": token
+        }
+    else:
+        print(f"Alias '{alias}' ya existe en la base de datos. No se sobrescribirá.")
+
+    with open(JSON_FILE, "w") as file:
+        json.dump(data, file, indent=4)
+
+
+def handle_client(conn, addr):
+    print(f"[NUEVA CONEXION] {addr} connected.")
+
+    connected = True
+    while connected:
+        opc=0
+        msg_length = conn.recv(HEADER).decode(FORMAT)
+        if msg_length:
             
-            print("Esperando una solicitud de registro...")
-            client_socket, client_address = server_socket.accept()
-            print(f"Solicitud de registro recibida desde {client_address}")
-
-          
-            data = client_socket.recv(1024).decode() #se utiliza oara recibir los datos a traves del socket
-            if data:
-                alias, _ = data.split("|")  # se separa en el DB.txt de la siguienet manera Alias|Token
-                token = generate_token()  #defino la funcion token arriba
-
-              
-                save_drone(alias, token)
-
+            msg_length = int(msg_length)
+            message = conn.recv(msg_length).decode(FORMAT)
+            
+            alias = message.split()[1]
+            opc = int(message.split()[0])
+           
+            if message == FIN:
+                connected = False
+            elif opc == 1:           
+                id = 1
+                token = generate_random_token(64)
+                save_drone_info(alias , id , token)
+                message_to_send = f"{alias} {token}"
+                              
+                print(f" He recibido del cliente [{addr}] el mensaje: {alias}")
                 
-                client_socket.send(token.encode()) #enviamos desde el servidor al cliente 
+                send_message(message_to_send,conn)
+                
+            elif opc == 2:
+                try:
+                    with open(JSON_FILE, "r") as file:
+                        data = json.load(file)
+                except FileNotFoundError:
+                    data = {}  
+                    
+                if alias in data:
+                    message_to_send = "Dime el nuevo Alias del dron "
+                    send_message(message_to_send,conn)
+                    
+                    new_alias = conn.recv(HEADER).decode(FORMAT)
+                    if new_alias:
+                        new_alias = int(new_alias)
+                        new_alias = conn.recv(new_alias).decode(FORMAT)
+                          
+                    data[new_alias] = data.pop(alias)
+                    
+                    with open('BD.json', 'w') as archivo:
+                        json.dump(data, archivo, indent=4)
+                    
+                    message_to_send = "ok"
+                    send_message(message_to_send,conn)
+                else:              
+                    message_to_send = "Not existe"
+                    send_message(message_to_send,conn)
+                
+            elif opc==3:
+                print("dfd")
+            
+                
+            
+                
 
-            # Cierra la conexión con el cliente
-            client_socket.close()
-    except KeyboardInterrupt:
-        print("AD_Registry detenido.")
+    print("ADIOS. TE ESPERO EN OTRA OCASION")
+    conn.close()
+    
+        
 
-if __name__ == "__main__":
-    import sys
+def start():
+    server.listen()
+    print(f"[LISTENING] Servidor a la escucha en {SERVER}")
+    CONEX_ACTIVAS = threading.active_count()-1
+    print(CONEX_ACTIVAS)
+    while True:
+        conn, addr = server.accept()
+        CONEX_ACTIVAS = threading.active_count()
+        if (CONEX_ACTIVAS <= MAX_CONEXIONES): 
+            thread = threading.Thread(target=handle_client, args=(conn, addr))
+            thread.start()
+            print(f"[CONEXIONES ACTIVAS] {CONEX_ACTIVAS}")     
+            print("CONEXIONES RESTANTES PARA CERRAR EL SERVICIO", MAX_CONEXIONES-CONEX_ACTIVAS)
+        else:
+            print("OOppsss... DEMASIADAS CONEXIONES. ESPERANDO A QUE ALGUIEN SE VAYA")
+            conn.send("OOppsss... DEMASIADAS CONEXIONES. Tendrás que esperar a que alguien se vaya".encode(FORMAT))
+            conn.close()
+            CONEX_ACTUALES = threading.active_count()-1
+        
 
-    if len(sys.argv) != 2:
-        print("Uso: python AD_Registry.py <puerto>")
-        sys.exit(1)
+######################### MAIN ##########################
 
-    port = int(sys.argv[1])
-    Registry(port)
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(ADDR)
+
+print("[STARTING] Servidor inicializándose...")
+
+start()
+
+
+
