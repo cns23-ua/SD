@@ -50,7 +50,7 @@ class Dron:
                     
         return optima
     
-    # * Funcion que transmite la posición al servidor
+    # * Funcion que transmite un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
         message = msg.encode(FORMAT)
         msg_length = len(message)
@@ -126,7 +126,7 @@ class Dron:
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 self.enviar_mensaje(cliente, alias)
                 #Hemos enviado los datos y esperamos respuesta con nuestro token
-                while (token==""):
+                while (token==""): # !Arreglar esta parte y hacer lo mismo en edit
                     long = cliente.recv(HEADER).decode(FORMAT)
                     if long:
                         long = int(long)
@@ -149,10 +149,10 @@ class Dron:
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 self.enviar_mensaje(cliente, alias)
                 #Hemos enviado los datos y esperamos respuesta de si podemos editar
-                editado = True
+                editado = True # !Dejarlo cómo arriba
                 while (editado == False):
                     print("Recibo del Servidor: ", cliente.recv(HEADER).decode(FORMAT))
-                    edit=input()
+                    edit=cliente.recv(HEADER).decode(FORMAT)
                     if(edit == "ok"):
                         editado=True
                         exito=True
@@ -187,7 +187,8 @@ class Dron:
         elif (opc==4):
             sys.exit(1)
             
-            
+#Prueba :
+
 if (len(sys.argv) == 3):
     SERVER = sys.argv[1]
     PORT = int(sys.argv[2])
