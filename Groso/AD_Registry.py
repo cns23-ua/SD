@@ -1,4 +1,3 @@
-
 import socket 
 import threading
 import json
@@ -103,10 +102,6 @@ def handle_client(conn, addr):
             elif opc==3:
                 print("dfd")
             
-                
-            
-                
-
     print("ADIOS. TE ESPERO EN OTRA OCASION")
     conn.close()
     
