@@ -3,16 +3,21 @@ import sys
 import math
 from coordenada import *
 from tablero import *
+from AD_Drone import *
 
 class AD_Engine:
     
     # *Constructor
-    def __init__(self, puerto_escucha, n_maxDrones, puerto_broker, puerto_weather):
+    def __init__(self, mapa, puerto_escucha, n_maxDrones, puerto_broker, puerto_weather):
+        self.mapa = mapa
         self.puerto_escucha = puerto_escucha
         self.n_maxDrones = n_maxDrones
         self.puerto_broker = puerto_broker
         self.puerto_weather = puerto_weather
+        self.drones = []
+        self.destinos = []
         
+    # *Comunica con el servidor clima y notifica el clima
     def consultar_clima(self, server, port):
          #Establece conexión con el servidor (weather)
         try:
@@ -26,15 +31,30 @@ class AD_Engine:
         
         return client
     
-    def enviar_tablero(self, tablero, dron):
-        Hay_que_rellenar = "Hay que rellenar"
+    # *Notifica del estado del mapa a los drones
+    def enviar_tablero(self, drones):
+        for dron in drones:
+            dron.recibir_mapa(self.mapa)
         
+    # *Procesa el fichero de figuras
     def procesar_fichero(self, fichero):
         Hay_que_rellenar = "Hay que rellenar"
+        
+    # *Autentica si el dron está registrado
+    def autenticar_dron(self, dron):
+        Hay_que_rellenar = "Hay que rellenar"
 
-    def notificar_posición(self, posicion, dron):
+    # *Notifica los destinos a los drones y los pone en marcha
+    def notificar_destinos(self):
+         for dron in self.drones:
+            if dron.identificador in self.destinos:
+                destino = self.destinos[dron.identificador]     #!No sé si esto está bien 
+                dron.recibir_destino(destino)
+   
+    # *Acaba con la acción     
+    def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
     
-     # *Inicia el sistema y contiene la estructura principal de funiconamiento
+    # *Inicia el sistema y contiene la estructura principal de funiconamiento
     def start(self, puerto): 
         Hay_que_rellenar = "Hay que rellenar"
