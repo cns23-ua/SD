@@ -22,6 +22,12 @@ class Dron:
         if (self.posicion[0]==pos_fin[0] and self.posicion[1]==pos_fin[1]):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
     
+    
+    
+    
+    
+    
+    
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
         x = [-1,0,1]
@@ -106,7 +112,7 @@ class Dron:
         token=""
         opc = 0
         while(opc>4 or opc<1):
-            print("Hola, soy un dron, qué operación desea realizar?")
+            print("\nHola, soy un dron, qué operación desea realizar?")
             print("[1] Dar de alta")
             print("[2] Editar perfil")
             print("[3] Dar de baja")
@@ -114,12 +120,12 @@ class Dron:
             opc=int(input())
             if(opc<1 or opc>4):
                 print("Opción no válida, inténtelo de nuevo")
+                
+            
         
         if (opc==1):
-            exito = False
-            while(exito==False):
                 alias = ""
-                print("Introduce mi alias")
+                print("\nIntroduce mi alias")
                 alias = input()
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"
@@ -137,27 +143,26 @@ class Dron:
             
                 self.token=token_manejable[1]
                 print("Ya tengo mi token y estoy dado de alta")
-                exito=True
+                
                 
                 
         elif (opc==2):
-            exito = False
-            editado = False
-            while(exito==False):
+                      
                 print("Dime el Alias del dron que quieres modificar")
                 alias = input()
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"
                 
                 self.enviar_mensaje(cliente, message)
-                #Hemos enviado los datos y esperamos respuesta de si podemos editar
-                
-                edit = ""
-                
+                #Hemos enviado los datos y esperamos respuesta de si podemos editar              
+                edit = ""           
                 message = cliente.recv(HEADER).decode(FORMAT)
-                if message:
-                    message = int(message)
-                    message = cliente.recv(message).decode(FORMAT)
+                message = int(message)
+                message = cliente.recv(message).decode(FORMAT)
+                
+                
+
+                if message != "No existe":              
                     print(message) 
                     alias = input()
                                             
@@ -166,39 +171,38 @@ class Dron:
                     cliente.send(str(message_length).encode(FORMAT))
                     cliente.send(message_bytes)
                     
+                   
                     edit = cliente.recv(HEADER).decode(FORMAT)
                     if edit:
+                        
                         edit = int(edit)
                         edit = cliente.recv(edit).decode(FORMAT)
-                                    
+                
                 if(edit == "ok"):
-                    exito=True
-                    self.alias=alias
+                    
                     print("Sus credenciales han sido modificadas con éxito")
                     
                 else:
-                    exito=False    
+                    
                     print("No hay registros en la base de datos, pruebe a registrarse")
                         
         elif (opc==3):
-            exito = False
-            while(exito==False):
-                #Conectamos con registri
-                self.enviar_mensaje(cliente, self.id + "" + self.alias)
-                #Hemos enviado los datos y esperamos respuesta de si hemos dado de baja
-                baja = True
-                while (baja == False):
-                    print("Recibo del Servidor: ", cliente.recv(2048).decode(FORMAT))
-                    baja=input()
-                    if(baja == "ok"):
-                        baja=True
-                        exito=True
-                        print("Se ha dado de baja con éxito")
-                        
-                    else:
-                        exito=True
-                        baja=True
-                        print("Algo ha fallado, pruebe de nuevo más tarde")
+            print("Introduce el alias del dron que quieres eliminar")
+            alias = input()
+            #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
+            message = f"{opc} {alias}"
+            self.enviar_mensaje(cliente, message)
+            
+            print("soy el cliente")
+            
+            message = cliente.recv(HEADER).decode(FORMAT)
+            message = int(message)
+            message = cliente.recv(message).decode(FORMAT)
+            
+            if(message == "ok"):
+                print("El dron ", alias , " se ha eliminado con exito")
+            else:
+                print("No se ha encontrado al dron ", alias , " en la base de datos ")
                         
         elif (opc==4):
             sys.exit(1)

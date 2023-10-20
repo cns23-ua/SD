@@ -26,6 +26,25 @@ def generate_random_token(length):
     token = ''.join(secrets.choice(alphabet) for i in range(length))
     return token
 
+
+
+def eliminar_dron_por_nombre(alias, JSON_FILE):
+    try:
+        with open(JSON_FILE, "r") as file:
+            data = json.load(file)
+    except FileNotFoundError:
+        data = {}
+
+    if alias in data:
+        del data[alias]  # Eliminar el dron con el nombre proporcionado
+
+        with open(JSON_FILE, 'w') as archivo:
+            json.dump(data, archivo, indent=4)
+
+        return "ok", True  # Devuelve "ok" y True si el dron se eliminó con éxito
+    else:
+        return "Not existe", False
+
 def save_drone_info(alias , id , token):
     try:
         
@@ -61,17 +80,19 @@ def handle_client(conn, addr):
             alias = message.split()[1]
             opc = int(message.split()[0])
            
+           
+           
             if message == FIN:
                 connected = False
+                
             elif opc == 1:           
                 id = 1
                 token = generate_random_token(64)
                 save_drone_info(alias , id , token)
-                message_to_send = f"{alias} {token}"
-                              
-                print(f" He recibido del cliente [{addr}] el mensaje: {alias}")
-                
+                message_to_send = f"{alias} {token}" 
                 send_message(message_to_send,conn)
+                
+                
                 
             elif opc == 2:
                 try:
@@ -97,16 +118,24 @@ def handle_client(conn, addr):
                     message_to_send = "ok"
                     send_message(message_to_send,conn)
                 else:              
-                    message_to_send = "Not existe"
+                    message_to_send = "No existe"
                     send_message(message_to_send,conn)
                 
             elif opc==3:
-                print("dfd")
-            
+                try:
+                    with open(JSON_FILE, "r") as file:
+                        data = json.load(file)
+                except FileNotFoundError:
+                    data = {}
                 
-            
+                message_to_send, success = eliminar_dron_por_nombre(alias, JSON_FILE)
                 
-
+                if success:
+                    send_message(message_to_send, conn)
+                else:
+                    send_message(message_to_send, conn)
+                
+                
     print("ADIOS. TE ESPERO EN OTRA OCASION")
     conn.close()
     
