@@ -15,19 +15,23 @@ class Dron:
         self.color = "Rojo"
         self.coordenada = Coordenada(1,1)
         self.token = ""
+        self.destino = None
+        self.mapa = None
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
-    def mover(self, pos_fin):
-        self.posicion = self.siguiente_mov(pos_fin)
-        if (self.posicion[0]==pos_fin[0] and self.posicion[1]==pos_fin[1]):
+    def mover(self, destino):
+        self.posicion = self.siguiente_mov(destino)
+        if (self.posicion[0]==destino[0] and self.posicion[1]==destino[1]):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
     
-    
-    
-    
-    
-    
-    
+    #Recibimos destino del engine
+    def recibir_destino(self, destino):
+        self.destino=destino
+        
+    #Recibimos tablero del engine
+    def recibir_mapa(self, mapa):
+        self.mapa=mapa
+        
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
         x = [-1,0,1]
