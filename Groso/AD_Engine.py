@@ -14,6 +14,9 @@ FORMAT = 'utf-8'
 
 class AD_Engine:
     
+    
+    #! HAY QUE GESTIONAR EN DRON LA CONEXIÓN AL ENGINE Y EL PASE DE PARÁMETROS DE ID Y TOKEN EN MENSAJE
+    
     # *Constructor
     def __init__(self, mapa, puerto_escucha, n_maxDrones, puerto_broker, puerto_weather):
         self.mapa = mapa
