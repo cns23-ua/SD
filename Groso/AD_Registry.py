@@ -121,7 +121,7 @@ def handle_client(conn, addr):
                     send_message(message_to_send,conn)
                 
             elif opc==3:
-<<<<<<< HEAD
+
                 try:
                     with open(JSON_FILE, "r") as file:
                         data = json.load(file)
@@ -134,12 +134,7 @@ def handle_client(conn, addr):
                     send_message(message_to_send, conn)
                 else:
                     send_message(message_to_send, conn)
-                
-                
-=======
-                print("dfd")
-            
->>>>>>> bec1814f43057ac7e440b09c49a7fb0cb0f2ece4
+          
     print("ADIOS. TE ESPERO EN OTRA OCASION")
     conn.close()
     
