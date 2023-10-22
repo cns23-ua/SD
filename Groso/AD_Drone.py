@@ -72,7 +72,7 @@ class Dron:
                     
         return optima
     
-    # * Funcion que transmite la posición al servidor
+    # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
         message = msg.encode(FORMAT)
         msg_length = len(message)
@@ -173,18 +173,17 @@ class Dron:
                       
                 print("Dime el Alias del dron que quieres modificar")
                 alias = input()
-                #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
-                message = f"{opc} {alias}"
                 
+                #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
+                message = f"{opc} {alias}"      
                 self.enviar_mensaje(cliente, message)
+                
                 #Hemos enviado los datos y esperamos respuesta de si podemos editar              
                 edit = ""           
                 message = cliente.recv(HEADER).decode(FORMAT)
                 message = int(message)
                 message = cliente.recv(message).decode(FORMAT)
                 
-                
-
                 if message != "No existe":              
                     print(message) 
                     alias = input()
@@ -193,8 +192,7 @@ class Dron:
                     message_length = len(message_bytes)
                     cliente.send(str(message_length).encode(FORMAT))
                     cliente.send(message_bytes)
-                    
-                   
+                       
                     edit = cliente.recv(HEADER).decode(FORMAT)
                     if edit:
                         
@@ -202,13 +200,10 @@ class Dron:
                         edit = cliente.recv(edit).decode(FORMAT)
                 
                 if(edit == "ok"):
-                    
                     print("Sus credenciales han sido modificadas con éxito")
-                    
                 else:
-                    
                     print("No hay registros en la base de datos, pruebe a registrarse")
-                        
+                       
         elif (opc==3):
             print("Introduce el alias del dron que quieres eliminar")
             alias = input()
