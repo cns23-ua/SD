@@ -24,6 +24,7 @@ class AD_Engine:
         self.n_maxDrones = n_maxDrones
         self.puerto_broker = puerto_broker
         self.puerto_weather = puerto_weather
+        self.drones = {}
         
         # *Función que envia mensaje
     def send_message(message_to_send , conn):
@@ -78,52 +79,49 @@ class AD_Engine:
                         id_dron, coord_x, coord_y = valores
                     posicion = Coordenada(coord_x,coord_y) 
                     #Si dron autenticado añadimos    
-                    if self.autenticar_dron(id_dron):
-                        #Diccionario que asigna un id(int) a una coordenada(objeto)                   #* <-Aquí
-                        figura_actual[id_dron]=posicion
+                    #Diccionario que asigna un id(int) a una coordenada(objeto)                   #* <-Aquí
+                    figura_actual[id_dron]=posicion
                 elif "</" in linea:
                     #Almacenamos la figura en el diccionario de figuras y limpiamos la figura actual
                     nombre_figura = linea.replace("</", "").replace(">", "")
                     #Diccionario que asigna un nombre(string) a una figura_actual(especificado arriba) # *^
                     figuras[nombre_figura] = figura_actual
-                    figura_actual.clear()
+                    figura_actual = {}
         # *? Ejemplo de figuras ("Pollito" : [5 : {2,3} , 6 : {5,6} .... ], "Corazón" : [....] , ....)
         return figuras
         
     # *Autentica si el dron está registrado
     def autenticar_dron(self, conn):
-        print(f"[NUEVA CONEXION] {conn} connected.")
-        verifed = False
-        while verifed == False:
-            msg_length = conn.recv(HEADER).decode(FORMAT)
-            if msg_length:
-                msg_length = int(msg_length)
-                token = conn.recv(msg_length).decode(FORMAT)
-                msg_length = int(msg_length)
-                message = conn.recv(msg_length).decode(FORMAT)
-            #Spliteamos el mensaje en id y token y leemos el json
-            id = int(message.split()[0])
-            token = message.split()[1]
-            try:
-                with open(JSON_FILE, "r") as file:
-                    data = json.load(file)
-            except FileNotFoundError:
-                print("No se encontró el archivo")
-                data = {}  
-            # Comprobamos que el id y el token están en el json
-            if id in data:
-                if token in data:
+        msg_length = conn.recv(HEADER).decode(FORMAT)
+        if msg_length:
+            msg_length = int(msg_length)
+            message = conn.recv(msg_length).decode(FORMAT)
+        #Spliteamos el mensaje en alias y token y leemos el json
+        alias = int(message.split(" ")[0])
+        id = int(message.split(" ")[1])
+        token = message.split(" ")[2]
+        try:
+            with open(JSON_FILE, "r") as file:
+                data = json.load(file)
+        except FileNotFoundError:
+            print("No se encontró el archivo")
+            data = {}  
+        # Comprobamos que el alias y el token están en el json
+        if alias in data:
+            for alias in data:
+                if alias['token'] == token:
                     message_to_send = "Dron verificado"
                     self.send_message(message_to_send, conn)
-                    verifed = True
+                    self.drones.add(id)
+                    return True
                 else:
-                    message_to_send = "Verificación fallida"
+                    message_to_send = "Rechazado"
                     self.send_message(message_to_send, conn)
-                    verifed = True
-            else:
-                message_to_send = "Verificación fallida"
-                self.send_message(message_to_send, conn)
-                verifed = True
+                    return False
+        else:
+            message_to_send = "Rechazado"
+            self.send_message(message_to_send, conn)
+            return False
                 
     # *Notifica los destinos a los drones y los pone en marcha
     def notificar_destinos(self, drones): # !KAFKA
