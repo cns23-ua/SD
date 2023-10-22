@@ -33,7 +33,14 @@ class Dron:
         client.send(str(message_length).encode(FORMAT))
         client.send(message_bytes)
         
-    def receive_message()
+    def receive_message(client):
+        long = client.recv(HEADER).decode(FORMAT)
+        if long:
+            long = int(long)
+            message = client.recv(long).decode(FORMAT)
+        
+        return message
+        
     
     
     
@@ -84,31 +91,33 @@ class Dron:
             client.connect(ADDR)
             print (f"Establecida conexión (engine) en [{ADDR}]")           
             #Una vez establecida la conexión 
-            message = f"{self.alias} {self.token}"       
+            message = f"{self.alias} {self.id} {self.token}"       
             self.send_message(message , client)
+            
+            #me espero  que me den la orden o ser rechazado
+            orden = self.receive_message(client)
+            
+            if orden=="Rechazado":
+                print("Conexion rechazada por el engine")
+                client.close()
             
             while  orden != "END":
                 print("Recibo del Servidor: ", client.recv(2048).decode(FORMAT))
-                orden=input()
                 orden_preparada=orden.split(" ")
-                if (orden[0]=="RUN"):
+                if (orden_preparada[0]=="RUN"):
+                    
                     pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
-                    while (self.estado=="Verde"):
+                    while (self.estado=="Rojo"):
                         self.mover(pos_fin)
                         self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
-                print("Vuelvo a base")
+                        
+                
                 client.send("Vuelvo a base")
                 client.close()
         except:
             print("No se ha podido establecer conexión(engine)")
-            
         return client
-    
-    
-    
-     
-    
-                
+        
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
         #Establece conexión con el servidor (engine)
@@ -117,10 +126,8 @@ class Dron:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR)
             print (f"Establecida conexión (registri) en [{ADDR}]")
-            
         except:
             print("No se ha podido establecer conexión(engine)")
-        
         return client
 
     # *Menú del dron para interactuar con registry
