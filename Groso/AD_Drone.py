@@ -2,6 +2,10 @@ from coordenada import *
 import socket
 import sys
 import math
+import threading
+import json
+import secrets
+import string
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -15,23 +19,25 @@ class Dron:
         self.color = "Rojo"
         self.coordenada = Coordenada(1,1)
         self.token = ""
-        self.destino = None
-        self.mapa = None
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
-    def mover(self, destino):
-        self.posicion = self.siguiente_mov(destino)
-        if (self.posicion[0]==destino[0] and self.posicion[1]==destino[1]):
+    def mover(self, pos_fin):
+        self.posicion = self.siguiente_mov(pos_fin)
+        if (self.posicion[0]==pos_fin[0] and self.posicion[1]==pos_fin[1]):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
     
-    #Recibimos destino del engine
-    def recibir_destino(self, destino):
-        self.destino=destino
+     # *Enviamos mensaje
+    def send_message(message_to_send , client):
+        message_bytes = message_to_send.encode(FORMAT)
+        message_length = len(message_bytes)
+        client.send(str(message_length).encode(FORMAT))
+        client.send(message_bytes)
         
-    #Recibimos tablero del engine
-    def recibir_mapa(self, mapa):
-        self.mapa=mapa
-        
+    def receive_message()
+    
+    
+    
+    
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
         x = [-1,0,1]
@@ -70,16 +76,17 @@ class Dron:
     
         
     # *Función que comunica con el servidor(engine) y hace lo que le mande
-    def conectar_engine(self, server, port):              
+    def conectar_verify_engine(self, server, port):              
         #Establece conexión con el servidor (engine)
         try:
             ADDR = (server, port)
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR)
-            print (f"Establecida conexión (engine) en [{ADDR}]")
-            
+            print (f"Establecida conexión (engine) en [{ADDR}]")           
             #Una vez establecida la conexión 
-            orden = "vacio"  
+            message = f"{self.alias} {self.token}"       
+            self.send_message(message , client)
+            
             while  orden != "END":
                 print("Recibo del Servidor: ", client.recv(2048).decode(FORMAT))
                 orden=input()
@@ -96,6 +103,11 @@ class Dron:
             print("No se ha podido establecer conexión(engine)")
             
         return client
+    
+    
+    
+     
+    
                 
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
@@ -217,10 +229,13 @@ class Dron:
 if (len(sys.argv) == 3):
     SERVER = sys.argv[1]
     PORT = int(sys.argv[2])
-    ADDR = (SERVER, PORT)
-    
-    dron = Dron()
-    
+    ADDR = (SERVER, PORT)   
+    dron = Dron() 
     cliente_reg = dron.conectar_registri(SERVER,PORT)
     dron.menu(SERVER,PORT, cliente_reg)
+    
+if (len(sys.argv) == 6):
+    
+    cliente_reg = dron.conectar_engine(SERVER,PORT)
+    
     
