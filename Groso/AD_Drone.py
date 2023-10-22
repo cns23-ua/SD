@@ -233,11 +233,9 @@ if (len(sys.argv) == 3):
     PORT = int(sys.argv[2])
     ADDR = (SERVER, PORT)   
     dron = Dron() 
-    cliente_reg = dron.conectar_registri(SERVER,PORT)
-    dron.menu(SERVER,PORT, cliente_reg)
-    
-if (len(sys.argv) == 6):
-    
-    cliente_reg = dron.conectar_engine(SERVER,PORT)
+   #cliente_reg = dron.conectar_registri(SERVER,PORT)
+   # dron.menu(SERVER,PORT, cliente_reg)
+        
+    cliente_reg = dron.conectar_verify_engine(SERVER,PORT)
     
     

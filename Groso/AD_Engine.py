@@ -8,9 +8,14 @@ import re
 JSON_FILE = "BD.json"
 import json
 
-
 HEADER = 64
+PORT = 5050
 FORMAT = 'utf-8'
+FIN = "FIN"
+MAX_CONEXIONES = 8
+JSON_FILE = "BD.json"
+SERVER = "127.0.0.1"
+ADDR = (SERVER, PORT)
 
 class AD_Engine:
     
@@ -134,6 +139,42 @@ class AD_Engine:
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
     
-    # *Inicia el sistema y contiene la estructura principal de funiconamiento
-    def start(self, puerto): 
-        Hay_que_rellenar = "Hay que rellenar"
+        
+    def handle_client(self, conn, addr):
+        print(f"[NUEVA CONEXION] {addr} connected.")
+        connected = True
+        while connected:
+            self.autenticar_dron(conn)     
+        print("ADIOS. TE ESPERO EN OTRA OCASION")
+        conn.close()
+
+    def start(self):
+        server.listen()
+        print(f"[LISTENING] Servidor a la escucha en {SERVER}")
+        CONEX_ACTIVAS = threading.active_count()-1
+        print(CONEX_ACTIVAS)
+        while True:
+            conn, addr = server.accept()
+            CONEX_ACTIVAS = threading.active_count()
+            if (CONEX_ACTIVAS <= MAX_CONEXIONES): 
+                thread = threading.Thread(target= self.handle_client, args=(conn, addr))
+                thread.start()
+                print(f"[CONEXIONES ACTIVAS] {CONEX_ACTIVAS}")     
+                print("CONEXIONES RESTANTES PARA CERRAR EL SERVICIO", MAX_CONEXIONES-CONEX_ACTIVAS)
+            else:
+                print("OOppsss... DEMASIADAS CONEXIONES. ESPERANDO A QUE ALGUIEN SE VAYA")
+                conn.send("OOppsss... DEMASIADAS CONEXIONES. Tendrás que esperar a que alguien se vaya".encode(FORMAT))
+                conn.close()
+                CONEX_ACTUALES = threading.active_count()-1
+        
+
+######################### MAIN ##########################
+
+print("[STARTING] Servidor inicializándose...")
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(ADDR)
+
+print("[STARTING] Servidor inicializándose...")
+
+engine = AD_Engine()
+engine.start()
