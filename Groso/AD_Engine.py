@@ -2,7 +2,7 @@ import socket
 import sys
 import math
 from coordenada import *
-from tablero import *
+#from tablero import *
 from AD_Drone import *
 import re
 JSON_FILE = "BD.json"
@@ -29,14 +29,16 @@ class AD_Engine:
         self.n_maxDrones = n_maxDrones
         self.puerto_broker = puerto_broker
         self.puerto_weather = puerto_weather
-        self.drones = {}
+        self.drones = []
         
-        # *Función que envia mensaje
-    def send_message(message_to_send , conn):
-        message_bytes = message_to_send.encode(FORMAT)
-        message_length = len(message_bytes)
-        conn.send(str(message_length).encode(FORMAT))
-        conn.send(message_bytes)
+    # * Funcion que envia un mensaje al servidor
+    def enviar_mensaje(self, cliente, msg): 
+        message = msg.encode(FORMAT)
+        msg_length = len(message)
+        send_length = str(msg_length).encode(FORMAT)
+        send_length += b' ' * (HEADER - len(send_length))
+        cliente.send(send_length)
+        cliente.send(message)
         
     # *Comunica con el servidor clima y notifica la temperatura en grados
     def consultar_clima(self, server, port, ciudad):
@@ -49,7 +51,7 @@ class AD_Engine:
             
             #Enviamos la ciudad que queremos
             message = f"{ciudad}"
-            self.send_message(message, client)
+            self.enviar_mensaje(client, message)
             
             #Esperamos respuesta del servidor del clima
             tiempo = ""
@@ -101,32 +103,35 @@ class AD_Engine:
         if msg_length:
             msg_length = int(msg_length)
             message = conn.recv(msg_length).decode(FORMAT)
-        #Spliteamos el mensaje en alias y token y leemos el json
-        alias = int(message.split(" ")[0])
-        id = int(message.split(" ")[1])
-        token = message.split(" ")[2]
-        try:
-            with open(JSON_FILE, "r") as file:
-                data = json.load(file)
-        except FileNotFoundError:
-            print("No se encontró el archivo")
-            data = {}  
-        # Comprobamos que el alias y el token están en el json
-        if alias in data:
-            for alias in data:
-                if alias['token'] == token:
+            #Spliteamos el mensaje en alias y token y leemos el json
+            print("hola", message)
+            alias = message.split()[0]
+            id = int(message.split()[1])
+            token = message.split()[2]  
+
+            try:
+                with open(JSON_FILE, "r") as file:
+                    data = json.load(file)
+            except FileNotFoundError:
+                print("No se encontró el archivo")
+                data = {}  
+            # Comprobamos que el alias y el token están en el json
+            
+            for clave, valor in data.items():
+                if "token" in valor and valor["token"] == token:
                     message_to_send = "Dron verificado"
-                    self.send_message(message_to_send, conn)
-                    self.drones.add(id)
+                    self.enviar_mensaje(conn, message_to_send)
+                    self.drones.append(id)
+                    print(self.drones)
                     return True
                 else:
                     message_to_send = "Rechazado"
-                    self.send_message(message_to_send, conn)
+                    self.enviar_mensaje(conn, message_to_send)
                     return False
-        else:
-            message_to_send = "Rechazado"
-            self.send_message(message_to_send, conn)
-            return False
+            else:
+                message_to_send = "Rechazado"
+                self.enviar_mensaje(conn, message_to_send)
+                return False
                 
     # *Notifica los destinos a los drones y los pone en marcha
     def notificar_destinos(self, drones): # !KAFKA
@@ -176,5 +181,5 @@ server.bind(ADDR)
 
 print("[STARTING] Servidor inicializándose...")
 
-engine = AD_Engine()
+engine = AD_Engine("","","","","")
 engine.start()
