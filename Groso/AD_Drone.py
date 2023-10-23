@@ -17,7 +17,7 @@ class Dron:
         self.id = 1
         self.alias = "prueba"
         self.color = "Rojo"
-        self.coordenada = Coordenada(1,1)
+        self.coordenada =Coordenada(1,1)
         self.token = "prudsdfsdfseba"
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
@@ -36,6 +36,7 @@ class Dron:
         
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
+         
         x = [-1,0,1]
         y = [-1,0,1]
         ini = self.coordenada
@@ -116,7 +117,7 @@ class Dron:
             client.connect(ADDR)
             print (f"Establecida conexión (registri) en [{ADDR}]")
         except:
-            print("No se ha podido establecer conexión(engine)")
+            print("No se ha podido establecer conexión(registri)")
         return client
 
     # *Menú del dron para interactuar con registry
@@ -222,8 +223,8 @@ if (len(sys.argv) == 3):
     PORT = int(sys.argv[2])
     ADDR = (SERVER, PORT)   
     dron = Dron() 
-   #cliente_reg = dron.conectar_registri(SERVER,PORT)
-   #dron.menu(SERVER,PORT, cliente_reg)
-    cliente_reg = dron.conectar_verify_engine(SERVER,PORT)
+    cliente_reg = dron.conectar_registri(SERVER,PORT)
+    dron.menu(SERVER,PORT, cliente_reg)
+    #cliente_reg = dron.conectar_verify_engine(SERVER,PORT)
     
     

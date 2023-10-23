@@ -85,7 +85,18 @@ def handle_client(conn, addr):
                 connected = False
                 
             elif opc == 1:           
-                id = 1
+                try:
+                    with open(JSON_FILE, "r") as file:
+                        data = json.load(file)
+                except FileNotFoundError:
+                    data = {}
+
+                # Encuentra el ID más alto en el JSON
+                max_id = max(data.values(), key=lambda x: x["id"])["id"]
+
+                # Calcula el nuevo ID sumando 1 al ID más alto
+                id = max_id + 1
+
                 token = generate_random_token(64)
                 save_drone_info(alias , id , token)
                 message_to_send = f"{alias} {token}" 
