@@ -2,38 +2,27 @@ from coordenada import *
 import socket
 import sys
 import math
-import threading
-import json
-import secrets
-import string
 
 HEADER = 64
+PORT = 5050
 FORMAT = 'utf-8'
 
 class Dron:
     
     # *Constructor
     def __init__(self):
-        self.id = 1
-        self.alias = "prueba"
+        self.id = 0
+        self.alias = ""
         self.color = "Rojo"
         self.coordenada = Coordenada(1,1)
-        self.token = "prudsdfsdfseba"
+        self.token = ""
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
         self.posicion = self.siguiente_mov(pos_fin)
         if (self.posicion[0]==pos_fin[0] and self.posicion[1]==pos_fin[1]):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
-        
-    def receive_message(self, client):
-        long = client.recv(HEADER).decode(FORMAT)
-        if long:
-            long = int(long)
-            message = client.recv(long).decode(FORMAT)
-
-        return message
-        
+    
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
         x = [-1,0,1]
@@ -61,7 +50,7 @@ class Dron:
                     
         return optima
     
-    # * Funcion que envia un mensaje al servidor
+    # * Funcion que transmite un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
         message = msg.encode(FORMAT)
         msg_length = len(message)
@@ -72,41 +61,33 @@ class Dron:
     
         
     # *Función que comunica con el servidor(engine) y hace lo que le mande
-    def conectar_verify_engine(self, server, port):              
+    def conectar_engine(self, server, port):              
         #Establece conexión con el servidor (engine)
         try:
             ADDR = (server, port)
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR)
+            print (f"Establecida conexión (engine) en [{ADDR}]")
             
-            print (f"Establecida conexión (engine) en [{ADDR}]")           
             #Una vez establecida la conexión 
-            message = f"{self.alias} {self.id} {self.token}"       
-            self.enviar_mensaje(client , message)
-                                
-            #me espero  que me den la orden o ser rechazado
-            orden = self.receive_message(client)
-            print("He llegado jefe", message)
-            
-            if orden=="Rechazado":
-                print("Conexion rechazada por el engine")
-                client.close()
-            
+            orden = "vacio"  
             while  orden != "END":
                 print("Recibo del Servidor: ", client.recv(2048).decode(FORMAT))
+                orden=input()
                 orden_preparada=orden.split(" ")
-                if (orden_preparada[0]=="RUN"):
-                    
+                if (orden[0]=="RUN"):
                     pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
-                    while (self.estado=="Rojo"):
+                    while (self.estado=="Verde"):
                         self.mover(pos_fin)
                         self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
+                print("Vuelvo a base")
                 client.send("Vuelvo a base")
-                client.close()  
+                client.close()
         except:
             print("No se ha podido establecer conexión(engine)")
+            
         return client
-        
+                
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
         #Establece conexión con el servidor (engine)
@@ -115,16 +96,18 @@ class Dron:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR)
             print (f"Establecida conexión (registri) en [{ADDR}]")
+            
         except:
             print("No se ha podido establecer conexión(engine)")
+        
         return client
 
     # *Menú del dron para interactuar con registry
     def menu(self, server_reg, port_reg, cliente):
-        token=""
+        
         opc = 0
         while(opc>4 or opc<1):
-            print("\nHola, soy un dron, qué operación desea realizar?")
+            print("Hola, soy un dron, qué operación desea realizar?")
             print("[1] Dar de alta")
             print("[2] Editar perfil")
             print("[3] Dar de baja")
@@ -132,98 +115,86 @@ class Dron:
             opc=int(input())
             if(opc<1 or opc>4):
                 print("Opción no válida, inténtelo de nuevo")
-                
-            
         
         if (opc==1):
+            exito = False
+            while(exito==False):
                 alias = ""
-                print("\nIntroduce mi alias")
+                print("Vamos a registrarme")
+                print("Introduce mi alias")
                 alias = input()
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
-                message = f"{opc} {alias}"
-                self.enviar_mensaje(cliente, message)
-                #Hemos enviado los datos y esperamos respuesta con nuestro token               
-                while (token==""):
+                self.enviar_mensaje(cliente, alias)
+                #Hemos enviado los datos y esperamos respuesta con nuestro token
+                while (token==""): # !Arreglar esta parte y hacer lo mismo en edit
                     long = cliente.recv(HEADER).decode(FORMAT)
                     if long:
                         long = int(long)
                         token = cliente.recv(long).decode(FORMAT)
                         print(token)    
-                                               
                 token_manejable=token.split(" ")
                 #si nuestro token empieza con tkn hemos podido registrarnos, si no no y volvemos a introducir datos
-            
-                self.token=token_manejable[1]
-                print("Ya tengo mi token y estoy dado de alta")
-                
-                
-                
-        elif (opc==2):
-                      
-                print("Dime el Alias del dron que quieres modificar")
-                alias = input()
-                
-                #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
-                message = f"{opc} {alias}"      
-                self.enviar_mensaje(cliente, message)
-                
-                #Hemos enviado los datos y esperamos respuesta de si podemos editar              
-                edit = ""           
-                message = cliente.recv(HEADER).decode(FORMAT)
-                message = int(message)
-                message = cliente.recv(message).decode(FORMAT)
-                
-                if message != "No existe":              
-                    print(message) 
-                    alias = input()
-                                            
-                    message_bytes = alias.encode(FORMAT)
-                    message_length = len(message_bytes)
-                    cliente.send(str(message_length).encode(FORMAT))
-                    cliente.send(message_bytes)
-                       
-                    edit = cliente.recv(HEADER).decode(FORMAT)
-                    if edit:
-                        
-                        edit = int(edit)
-                        edit = cliente.recv(edit).decode(FORMAT)
-                
-                if(edit == "ok"):
-                    print("Sus credenciales han sido modificadas con éxito")
+                if(token_manejable[0]=="tkn"):
+                    self.token=token_manejable[1]
+                    print("Ya tengo mi token y estoy dado de alta")
+                    exito=True
+                    cliente.close()
                 else:
-                    print("No hay registros en la base de datos, pruebe a registrarse")
-                       
+                    print("No puedes registrarte con estos credenciales, inténtalo de nuevo")
+        elif (opc==2):
+            exito = False
+            while(exito==False):
+                print("Introduce mi alias nuevo")
+                alias = input()
+                #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
+                self.enviar_mensaje(cliente, alias)
+                #Hemos enviado los datos y esperamos respuesta de si podemos editar
+                editado = True # !Dejarlo cómo arriba
+                while (editado == False):
+                    print("Recibo del Servidor: ", cliente.recv(HEADER).decode(FORMAT))
+                    edit=cliente.recv(HEADER).decode(FORMAT)
+                    if(edit == "ok"):
+                        editado=True
+                        exito=True
+                        self.alias=alias
+                        print("Sus credenciales han sido modificadas con éxito")
+                        cliente.close()
+                    elif(edit == "Not exist"):
+                        exito=True
+                        editado=True
+                        print("No hay registros en la base de datos, pruebe a registrarse")
+                        cliente.close()
         elif (opc==3):
-            print("Introduce el alias del dron que quieres eliminar")
-            alias = input()
-            #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
-            message = f"{opc} {alias}"
-            self.enviar_mensaje(cliente, message)
-            
-            print("soy el cliente")
-            
-            message = cliente.recv(HEADER).decode(FORMAT)
-            message = int(message)
-            message = cliente.recv(message).decode(FORMAT)
-            
-            if(message == "ok"):
-                print("El dron ", alias , " se ha eliminado con exito")
-            else:
-                print("No se ha encontrado al dron ", alias , " en la base de datos ")
-                        
+            exito = False
+            while(exito==False):
+                #Conectamos con registri
+                self.enviar_mensaje(cliente, self.id + "" + self.alias)
+                #Hemos enviado los datos y esperamos respuesta de si hemos dado de baja
+                baja = True
+                while (baja == False):
+                    print("Recibo del Servidor: ", cliente.recv(2048).decode(FORMAT))
+                    baja=input()
+                    if(baja == "ok"):
+                        baja=True
+                        exito=True
+                        print("Se ha dado de baja con éxito")
+                        cliente.close()
+                    else:
+                        exito=True
+                        baja=True
+                        print("Algo ha fallado, pruebe de nuevo más tarde")
+                        cliente.close()
         elif (opc==4):
             sys.exit(1)
-            cliente.close()
-        dron.menu(SERVER,PORT, cliente_reg)
             
-            
+#Prueba :
+
 if (len(sys.argv) == 3):
     SERVER = sys.argv[1]
     PORT = int(sys.argv[2])
-    ADDR = (SERVER, PORT)   
-    dron = Dron() 
-   #cliente_reg = dron.conectar_registri(SERVER,PORT)
-   #dron.menu(SERVER,PORT, cliente_reg)
-    cliente_reg = dron.conectar_verify_engine(SERVER,PORT)
+    ADDR = (SERVER, PORT)
     
+    dron = Dron()
     
+    cliente_reg = dron.conectar_registri(SERVER,PORT)
+    dron.menu(SERVER,PORT, cliente_reg)
