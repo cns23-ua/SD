@@ -14,37 +14,26 @@ class Dron:
     
     # *Constructor
     def __init__(self):
-        self.id = 0
-        self.alias = ""
+        self.id = 1
+        self.alias = "prueba"
         self.color = "Rojo"
         self.coordenada = Coordenada(1,1)
-        self.token = ""
+        self.token = "prudsdfsdfseba"
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
         self.posicion = self.siguiente_mov(pos_fin)
         if (self.posicion[0]==pos_fin[0] and self.posicion[1]==pos_fin[1]):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
-    
-     # *Enviamos mensaje
-    def send_message(message_to_send , client):
-        message_bytes = message_to_send.encode(FORMAT)
-        message_length = len(message_bytes)
-        client.send(str(message_length).encode(FORMAT))
-        client.send(message_bytes)
         
-    def receive_message(client):
+    def receive_message(self, client):
         long = client.recv(HEADER).decode(FORMAT)
         if long:
             long = int(long)
             message = client.recv(long).decode(FORMAT)
-        
+
         return message
         
-    
-    
-    
-    
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
         x = [-1,0,1]
@@ -89,13 +78,15 @@ class Dron:
             ADDR = (server, port)
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR)
+            
             print (f"Establecida conexión (engine) en [{ADDR}]")           
             #Una vez establecida la conexión 
             message = f"{self.alias} {self.id} {self.token}"       
-            self.send_message(message , client)
-            
+            self.enviar_mensaje(client , message)
+                                
             #me espero  que me den la orden o ser rechazado
             orden = self.receive_message(client)
+            print("He llegado jefe", message)
             
             if orden=="Rechazado":
                 print("Conexion rechazada por el engine")
@@ -110,10 +101,8 @@ class Dron:
                     while (self.estado=="Rojo"):
                         self.mover(pos_fin)
                         self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
-                        
-                
                 client.send("Vuelvo a base")
-                client.close()
+                client.close()  
         except:
             print("No se ha podido establecer conexión(engine)")
         return client
@@ -234,8 +223,7 @@ if (len(sys.argv) == 3):
     ADDR = (SERVER, PORT)   
     dron = Dron() 
    #cliente_reg = dron.conectar_registri(SERVER,PORT)
-   # dron.menu(SERVER,PORT, cliente_reg)
-        
+   #dron.menu(SERVER,PORT, cliente_reg)
     cliente_reg = dron.conectar_verify_engine(SERVER,PORT)
     
     
