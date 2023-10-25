@@ -6,26 +6,31 @@ import threading
 import json
 import secrets
 import string
+from confluent_kafka import Consumer, KafkaError
+import pickle
 
 HEADER = 64
 FORMAT = 'utf-8'
 
 class Dron:
     
-    # *Constructor
+    # * Constructor
     def __init__(self):
         self.id = 1
         self.alias = "prueba"
         self.color = "Rojo"
-        self.coordenada =Coordenada(1,1)
+        self.coordenada = Coordenada(1,1)
+        self.destino = Coordenada(1,1)
+        self.mapa = "mapa"
         self.token = "prudsdfsdfseba"
         
-    # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
+    # * Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
         self.posicion = self.siguiente_mov(pos_fin)
         if (self.posicion[0]==pos_fin[0] and self.posicion[1]==pos_fin[1]):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
         
+    # * Función que recive mensaje por soket
     def receive_message(self, client):
         long = client.recv(HEADER).decode(FORMAT)
         if long:
@@ -35,8 +40,7 @@ class Dron:
         return message
         
     # *Encontramos el siguiente movimiento que debe hacer
-    def siguiente_mov(self, pos_fin):
-         
+    def siguiente_mov(self, pos_fin):    
         x = [-1,0,1]
         y = [-1,0,1]
         ini = self.coordenada
@@ -71,8 +75,59 @@ class Dron:
         cliente.send(send_length)
         cliente.send(message)
     
+    # * Funcion que recibe el destino del dron mediante kafka
+    def recibir_destino(self, servidor_kafka, puerto_kafka):
+        consumer = Consumer({
+            "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
+            "group.id": "drones",
+            "auto.offset.reset": "earliest"
+        })
+            
+        topic = "mapa_a_drones_topic"
+
+        consumer.subscribe([topic])
+
+        while True:
+            msg = consumer.poll(1.0)
+
+            if msg is None:
+                continue
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    continue
+                else:
+                    print(f"Error al recibir mensaje: {msg.error()}")
+            else:
+                print(f"Mensaje recibido: {pickle.loads(msg.value())}")
+                self.destino = pickle.loads(msg.value())
+    
+    # * Función para recibir el mapa
+    def recibir_mapa(self, servidor_kafka, puerto_kafka):
+        consumer = Consumer({
+        "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
+        "group.id": "drones",
+        "auto.offset.reset": "earliest"
+        })
+            
+        topic = "destinos_a_drones_topic"
+
+        consumer.subscribe([topic])
+
+        while True:
+            msg = consumer.poll(1.0)
+
+            if msg is None:
+                continue
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    continue
+                else:
+                    print(f"Error al recibir mensaje: {msg.error()}")
+            else:
+                print(f"Mensaje recibido: {pickle.loads(msg.value())}")
+                self.mapa = pickle.loads(msg.value())
         
-    # *Función que comunica con el servidor(engine) y hace lo que le mande
+    # * Función que comunica con el servidor(engine) y hace lo que le mande
     def conectar_verify_engine(self, server, port):              
         #Establece conexión con el servidor (engine)
         try:
@@ -108,7 +163,7 @@ class Dron:
             print("No se ha podido establecer conexión(engine)")
         return client
         
-    # *Función que comunica con el servidor(registri)
+    # * Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
         #Establece conexión con el servidor (engine)
         try:
@@ -120,7 +175,7 @@ class Dron:
             print("No se ha podido establecer conexión(registri)")
         return client
 
-    # *Menú del dron para interactuar con registry
+    # * Menú del dron para interactuar con registry
     def menu(self, server_reg, port_reg, cliente):
         token=""
         opc = 0
@@ -134,8 +189,6 @@ class Dron:
             if(opc<1 or opc>4):
                 print("Opción no válida, inténtelo de nuevo")
                 
-            
-        
         if (opc==1):
                 alias = ""
                 print("\nIntroduce mi alias")
@@ -156,8 +209,6 @@ class Dron:
             
                 self.token=token_manejable[1]
                 print("Ya tengo mi token y estoy dado de alta")
-                
-                
                 
         elif (opc==2):
                       
