@@ -4,6 +4,7 @@ import json
 import secrets
 import string
 
+#Todo bien deberia funcionar
 
 HEADER = 64
 PORT = 5051
