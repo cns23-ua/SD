@@ -73,14 +73,14 @@ class Dron:
     
         
     # *Función que comunica con el servidor(engine) y hace lo que le mande
-    def conectar_verify_engine(self, server, port):              
+    def conectar_verify_engine(self, SERVER_eng, PORT_eng):              
         #Establece conexión con el servidor (engine)
         try:
-            ADDR = (server, port)
+            ADDR_eng = (SERVER_eng, PORT_eng)
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(ADDR)
+            client.connect(ADDR_eng)
             
-            print (f"Establecida conexión (engine) en [{ADDR}]")           
+            print (f"Establecida conexión (engine) en [{ADDR_eng}]")           
             #Una vez establecida la conexión 
             message = f"{self.alias} {self.id} {self.token}"       
             self.enviar_mensaje(client , message)
@@ -121,7 +121,7 @@ class Dron:
         return client
 
     # *Menú del dron para interactuar con registry
-    def menu(self, server_reg, port_reg, cliente):
+    def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
         token=""
         opc = 0
         while(opc>4 or opc<1):
@@ -129,9 +129,10 @@ class Dron:
             print("[1] Dar de alta")
             print("[2] Editar perfil")
             print("[3] Dar de baja")
-            print("[4] Desconectar")
+            print("[4] Añadir al espectaculo")
+            print("[5] Desconectar")
             opc=int(input())
-            if(opc<1 or opc>4):
+            if(opc<1 or opc>5):
                 print("Opción no válida, inténtelo de nuevo")
                 
             
@@ -212,19 +213,29 @@ class Dron:
             else:
                 print("No se ha encontrado al dron ", alias , " en la base de datos ")
                         
-        elif (opc==4):
+        elif (opc==5):
             sys.exit(1)
             cliente.close()
-        dron.menu(SERVER,PORT, cliente_reg)
+
+        elif (opc==4):
+            cliente.close()
+            cliente_eng = dron.conectar_verify_engine(SERVER_eng,PORT_eng)
+
+        if(opc!=5):
+            dron.menu(SERVER,PORT, cliente_reg , SERVER_eng , PORT_eng)
             
             
-if (len(sys.argv) == 3):
+
+
+if (len(sys.argv) == 5):
     SERVER = sys.argv[1]
     PORT = int(sys.argv[2])
     ADDR = (SERVER, PORT)   
-    dron = Dron() 
+    dron = Dron()
     cliente_reg = dron.conectar_registri(SERVER,PORT)
-    dron.menu(SERVER,PORT, cliente_reg)
-    #cliente_reg = dron.conectar_verify_engine(SERVER,PORT)
+    SERVER_eng = sys.argv[3]
+    PORT_eng = int(sys.argv[4])
+    ADDR_eng = (SERVER, PORT)
+    dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
     
     

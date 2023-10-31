@@ -7,6 +7,8 @@ from AD_Drone import *
 import re
 JSON_FILE = "BD.json"
 import json
+#from confluent_kafka import Producer
+import pickle
 
 HEADER = 64
 PORT = 5050
@@ -18,10 +20,7 @@ SERVER = "127.0.0.1"
 ADDR = (SERVER, PORT)
 
 class AD_Engine:
-    
-    
-    #! HAY QUE GESTIONAR EN DRON LA CONEXIÓN AL ENGINE Y EL PASE DE PARÁMETROS DE ID Y TOKEN EN MENSAJE
-    
+        
     # *Constructor
     def __init__(self, mapa, puerto_escucha, n_maxDrones, puerto_broker, puerto_weather):
         self.mapa = mapa
@@ -69,8 +68,15 @@ class AD_Engine:
         return tiempo
     
     # *Notifica del estado del mapa a los drones
-    def enviar_tablero(self, dron, addr): # !KAFKA
-        Hay_que_rellenar = "Hay que rellenar"
+    def enviar_tablero(self, servidor_kafka, puerto_kafka): # !KAFKA
+        producer = Producer({"bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}"})
+        topic = "mapa_a_drones_topic"
+
+        # Enviar el destino a un topic de Kafka
+        for dron in self.drones:
+            producer.produce(topic, key=str(dron), value=pickle.dumps(self.mapa))
+            
+        producer.flush()
             
     # *Procesa el fichero de figuras
     def procesar_fichero(self, fichero):
@@ -134,12 +140,18 @@ class AD_Engine:
                 return False
                 
     # *Notifica los destinos a los drones y los pone en marcha
-    def notificar_destinos(self, drones): # !KAFKA
-         for dron in drones:
-            if dron.identificador in self.destinos:
-                destino = drones[dron.identificador]     #!Para que esto drones tiene que ser 
-                dron.recibir_destino(destino)                   #!un diccionario del tipo id_dron : destinos(coordenada)
-   
+    def notificar_destinos(self, figura, servidor_kafka, puerto_kafka): # !KAFKA
+        producer = Producer({"bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}"})
+        topic = "destinos_a_drones_topic"
+
+        # Enviar los destinos a un topic de Kafka
+        for id_dron, destino in figura.items():
+            #Verificamos que los drones de la figura estén verificados
+            if (id_dron in self.drones):
+                producer.produce(topic, key=str(id_dron), value=pickle.dumps(destino))
+            
+        producer.flush()
+        
     # *Acaba con la acción
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
