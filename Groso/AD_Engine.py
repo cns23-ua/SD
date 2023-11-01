@@ -16,7 +16,7 @@ FORMAT = 'utf-8'
 FIN = "FIN"
 MAX_CONEXIONES = 8
 JSON_FILE = "BD.json"
-SERVER = "127.0.0.1"
+SERVER = "127.0.0.3"
 ADDR = (SERVER, PORT)
 
 class AD_Engine:
@@ -115,13 +115,14 @@ class AD_Engine:
             id = int(message.split()[1])
             token = message.split()[2]  
 
+
             try:
                 with open(JSON_FILE, "r") as file:
                     data = json.load(file)
             except FileNotFoundError:
                 print("No se encontró el archivo")
                 data = {}  
-    
+   
             # Comprobamos que el alias y el token están en el json
             for clave, valor in data.items():
                 if "token" in valor and valor["token"] == token:

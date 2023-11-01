@@ -7,6 +7,7 @@ import json
 import secrets
 import string
 
+
 HEADER = 64
 FORMAT = 'utf-8'
 
@@ -15,10 +16,10 @@ class Dron:
     # *Constructor
     def __init__(self):
         self.id = 1
-        self.alias = "prueba"
+        self.alias = ""
         self.color = "Rojo"
         self.coordenada =Coordenada(1,1)
-        self.token = "prudsdfsdfseba"
+        self.token = ""
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
@@ -27,10 +28,10 @@ class Dron:
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
         
     def receive_message(self, client):
-        long = client.recv(HEADER).decode(FORMAT)
-        if long:
-            long = int(long)
-            message = client.recv(long).decode(FORMAT)
+        msg_length = client.recv(HEADER).decode(FORMAT)
+        if msg_length:
+            msg_length = int(msg_length)
+            message = client.recv(msg_length).decode(FORMAT)
 
         return message
         
@@ -79,31 +80,28 @@ class Dron:
             ADDR_eng = (SERVER_eng, PORT_eng)
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR_eng)
-            
-            print (f"Establecida conexión (engine) en [{ADDR_eng}]")           
-            #Una vez establecida la conexión 
-            message = f"{self.alias} {self.id} {self.token}"       
+           
+            print (f"Establecida conexión (engine) en [{ADDR_eng}]")          
+            #Una vez establecida la conexión
+            message = f"{self.alias} {self.id} {self.token}"      
             self.enviar_mensaje(client , message)
-                                
+            orden = ""
             #me espero  que me den la orden o ser rechazado
-            orden = self.receive_message(client)
-            print("He llegado jefe", message)
-            
+            while  orden == "":
+                orden = self.receive_message(client)
+                print( "orden" + orden)
+                orden_preparada=orden.split(" ")
             if orden=="Rechazado":
                 print("Conexion rechazada por el engine")
                 client.close()
-            
-            while  orden != "END":
-                print("Recibo del Servidor: ", client.recv(2048).decode(FORMAT))
-                orden_preparada=orden.split(" ")
-                if (orden_preparada[0]=="RUN"):
-                    
-                    pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
-                    while (self.estado=="Rojo"):
-                        self.mover(pos_fin)
-                        self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
+            elif (orden_preparada[0]=="RUN"):
+                pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
+                while (self.estado=="Rojo"):
+                    self.mover(pos_fin)
+                    self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
                 client.send("Vuelvo a base")
-                client.close()  
+            elif orden=="END":
+                client.close()
         except:
             print("No se ha podido establecer conexión(engine)")
         return client
@@ -144,18 +142,24 @@ class Dron:
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"
                 self.enviar_mensaje(cliente, message)
-                #Hemos enviado los datos y esperamos respuesta con nuestro token               
+                #Hemos enviado los datos y esperamos respuesta con nuestro token 
+                token =""              
                 while (token==""):
-                    long = cliente.recv(HEADER).decode(FORMAT)
-                    if long:
-                        long = int(long)
-                        token = cliente.recv(long).decode(FORMAT)
-                        print(token)    
+                    print("Estamos dentro")
+                    msg_length = cliente.recv(HEADER).decode(FORMAT)
+                    if msg_length:
+                        msg_length = int(msg_length)
+                        token = cliente.recv(msg_length).decode(FORMAT)
+                    #token = self.receive_message(cliente)
+                print("Esta es la token" + token)    
                                                
                 token_manejable=token.split(" ")
                 #si nuestro token empieza con tkn hemos podido registrarnos, si no no y volvemos a introducir datos
             
+                self.alias=token_manejable[0]
+                print("self.alias" + self.alias)
                 self.token=token_manejable[1]
+                print("self.token "+ self.token)
                 print("Ya tengo mi token y estoy dado de alta")
                 
                 
@@ -218,7 +222,6 @@ class Dron:
             cliente.close()
 
         elif (opc==4):
-            cliente.close()
             cliente_eng = dron.conectar_verify_engine(SERVER_eng,PORT_eng)
 
         if(opc!=5):

@@ -15,11 +15,13 @@ JSON_FILE = "BD.json"
 SERVER = "127.0.0.1"
 ADDR = (SERVER, PORT)
 
-def send_message(message_to_send , conn):
-    message_bytes = message_to_send.encode(FORMAT)
-    message_length = len(message_bytes)
-    conn.send(str(message_length).encode(FORMAT))
-    conn.send(message_bytes)
+def send_message(msg , cliente):
+    message = msg.encode(FORMAT)
+    msg_length = len(message)
+    send_length = str(msg_length).encode(FORMAT)
+    send_length += b' ' * (HEADER - len(send_length))
+    cliente.send(send_length)
+    cliente.send(message)
 
 def generate_random_token(length):
     alphabet = string.ascii_letters + string.digits
@@ -101,7 +103,7 @@ def handle_client(conn, addr):
                 token = generate_random_token(64)
                 save_drone_info(alias , id , token)
                 message_to_send = f"{alias} {token}" 
-                send_message(message_to_send,conn)
+                send_message(message_to_send, conn)
                 
                 
                 
