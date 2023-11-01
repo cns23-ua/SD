@@ -121,8 +121,8 @@ class AD_Engine:
             except FileNotFoundError:
                 print("No se encontró el archivo")
                 data = {}  
+    
             # Comprobamos que el alias y el token están en el json
-            
             for clave, valor in data.items():
                 if "token" in valor and valor["token"] == token:
                     message_to_send = "Dron verificado"
