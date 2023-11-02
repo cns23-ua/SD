@@ -17,16 +17,18 @@ FIN = "FIN"
 MAX_CONEXIONES = 8
 JSON_FILE = "BD.json"
 SERVER = "127.0.0.3"
-ADDR = (SERVER, PORT)
+
 
 class AD_Engine:
         
     # *Constructor
-    def __init__(self, mapa, puerto_escucha, n_maxDrones, puerto_broker, puerto_weather):
-        self.mapa = mapa
+    def __init__(self,puerto_escucha, n_maxDrones, ip_broker ,puerto_broker,ip_weather, puerto_weather):
+        self.mapa = ""
         self.puerto_escucha = puerto_escucha
         self.n_maxDrones = n_maxDrones
+        self.ip_broker = ip_broker
         self.puerto_broker = puerto_broker
+        self.ip_weather = ip_weather
         self.puerto_weather = puerto_weather
         self.drones = []
         
@@ -80,27 +82,32 @@ class AD_Engine:
             
     # *Procesa el fichero de figuras
     def procesar_fichero(self, fichero):
-        figuras = []  # Lista que contendrá las figuras que haya en el fichero
-        figura_actual = []  # Inicialmente no hay figura actual
+        figuras = {}  
+        figura_actual = {}  
 
-        with open(fichero, 'r') as file:
-            for linea in file:
-                if "><" in linea:
-                    # Extraemos los valores de la linea
-                    valores = [int(numero) for numero in re.findall(r'<(\d+)>', linea)]
-                    if len(valores) == 3:
-                        id_dron, coord_x, coord_y = valores
-                    posicion = Coordenada(coord_x,coord_y) 
-                    #Si dron autenticado añadimos    
-                    #Diccionario que asigna un id(int) a una coordenada(objeto)                   #* <-Aquí
-                    figura_actual[id_dron]=posicion
-                elif "</" in linea:
-                    #Almacenamos la figura en el diccionario de figuras y limpiamos la figura actual
-                    nombre_figura = linea.replace("</", "").replace(">", "")
-                    #Diccionario que asigna un nombre(string) a una figura_actual(especificado arriba) # *^
-                    figuras[nombre_figura] = figura_actual
-                    figura_actual = {}
-        # *? Ejemplo de figuras ("Pollito" : [5 : {2,3} , 6 : {5,6} .... ], "Corazón" : [....] , ....)
+        with open(fichero, 'r') as archivo:
+            data = json.load(archivo)
+
+        for figura in data['figuras']:
+            nombre_figura = figura['Nombre'] 
+            drones = figura['Drones']
+            
+            
+            print(f"Nombre de la figura: {nombre_figura}")
+            
+            for drone in drones:
+                id_drone = (drone['ID'])
+                posicion = drone['POS']
+                pos_x = int(posicion.split(",")[0])
+                pos_y = int(posicion.split(",")[1])
+                Cord = Coordenada(pos_x,pos_y)
+                figura_actual[id_drone] = Cord
+                
+                
+
+            figuras[nombre_figura] = figura_actual
+            figura_actual = {}
+            # *? Ejemplo de figuras ("Pollito" : [5 : {2,3} , 6 : {5,6} .... ], "Corazón" : [....] , ....)
         return figuras
         
     # *Autentica si el dron está registrado
@@ -157,12 +164,14 @@ class AD_Engine:
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
     
+    
         
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         connected = True
         while connected:
-            self.autenticar_dron(conn)     
+            self.autenticar_dron(conn)
+                 
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
 
@@ -188,11 +197,32 @@ class AD_Engine:
 
 ######################### MAIN ##########################
 
-print("[STARTING] Servidor inicializándose...")
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(ADDR)
 
-print("[STARTING] Servidor inicializándose...")
 
-engine = AD_Engine("","","","","")
-engine.start()
+if (len(sys.argv) == 8):
+    fichero=""
+    puerto_escucha = int(sys.argv[1])
+    max_drones = int(sys.argv[2])
+    ip_broker = sys.argv[3]
+    puerto_broker = int(sys.argv[4])
+    ip_weather= sys.argv[5]
+    puerto_weather = int(sys.argv[6])
+    ip_weather= sys.argv[7]
+    
+    ADDR = (SERVER, puerto_escucha) 
+    print("[STARTING] Servidor inicializándose...")
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(ADDR)
+    print("[STARTING] Servidor inicializándose...")  
+    engine = AD_Engine(puerto_escucha,max_drones, ip_broker ,puerto_broker,ip_weather, puerto_weather)
+    if fichero != "":   
+        engine.start()
+        
+
+if (len(sys.argv) == 2):
+    engine = AD_Engine("","","","","","")
+    fichero = sys.argv[1]
+    figuras = engine.procesar_fichero(fichero)
+    print(figuras)
+
+

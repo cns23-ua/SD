@@ -21,13 +21,9 @@ class Dron:
         self.alias = "test"
         self.color = "Rojo"
         self.coordenada =Coordenada(1,1)
-<<<<<<< HEAD
-        self.token = "tigOlsou2SxPAhdm20lINGlasi4OztnHRvU44QcT297Ji13Dz2VIqZHcx6UQb9wN"
-=======
         self.token = ""
         self.destino = Coordenada(1,1)
         self.mapa = "mapa"
->>>>>>> lpv24
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
