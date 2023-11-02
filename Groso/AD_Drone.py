@@ -15,11 +15,11 @@ class Dron:
     
     # *Constructor
     def __init__(self):
-        self.id = 1
-        self.alias = ""
+        self.id = 190
+        self.alias = "test"
         self.color = "Rojo"
         self.coordenada =Coordenada(1,1)
-        self.token = ""
+        self.token = "tigOlsou2SxPAhdm20lINGlasi4OztnHRvU44QcT297Ji13Dz2VIqZHcx6UQb9wN"
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
@@ -157,9 +157,8 @@ class Dron:
                 #si nuestro token empieza con tkn hemos podido registrarnos, si no no y volvemos a introducir datos
             
                 self.alias=token_manejable[0]
-                print("self.alias" + self.alias)
-                self.token=token_manejable[1]
-                print("self.token "+ self.token)
+                self.id=token_manejable[1]
+                self.token=token_manejable[2]
                 print("Ya tengo mi token y estoy dado de alta")
                 
                 

@@ -16,7 +16,7 @@ FORMAT = 'utf-8'
 FIN = "FIN"
 MAX_CONEXIONES = 8
 JSON_FILE = "BD.json"
-SERVER = "127.0.0.3"
+SERVER = "127.0.0.2"
 ADDR = (SERVER, PORT)
 
 class AD_Engine:
@@ -110,7 +110,7 @@ class AD_Engine:
             msg_length = int(msg_length)
             message = conn.recv(msg_length).decode(FORMAT)
             #Spliteamos el mensaje en alias y token y leemos el json
-            print("hola", message)
+           
             alias = message.split()[0]
             id = int(message.split()[1])
             token = message.split()[2]  
@@ -124,21 +124,26 @@ class AD_Engine:
                 data = {}  
    
             # Comprobamos que el alias y el token están en el json
+            
+
+            message_to_send = "Rechazado"
+            exito=False
             for clave, valor in data.items():
-                if "token" in valor and valor["token"] == token:
+                token_for = valor.get('token', None)
+                if token_for==token:
                     message_to_send = "Dron verificado"
                     self.enviar_mensaje(conn, message_to_send)
                     self.drones.append(id)
                     print(self.drones)
-                    return True
-                else:
-                    message_to_send = "Rechazado"
-                    self.enviar_mensaje(conn, message_to_send)
-                    return False
-            else:
-                message_to_send = "Rechazado"
-                self.enviar_mensaje(conn, message_to_send)
-                return False
+                    exito=True
+                    break           
+               
+                    
+            self.enviar_mensaje(conn, message_to_send)       
+            print("este es el messaje enviado:" , message_to_send)    
+            return exito
+           
+            
                 
     # *Notifica los destinos a los drones y los pone en marcha
     def notificar_destinos(self, figura, servidor_kafka, puerto_kafka): # !KAFKA

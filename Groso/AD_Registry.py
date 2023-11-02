@@ -102,7 +102,7 @@ def handle_client(conn, addr):
 
                 token = generate_random_token(64)
                 save_drone_info(alias , id , token)
-                message_to_send = f"{alias} {token}" 
+                message_to_send = f"{alias} {id} {token}" 
                 send_message(message_to_send, conn)
                 
                 
