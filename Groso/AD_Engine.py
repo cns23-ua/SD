@@ -7,7 +7,7 @@ from AD_Drone import *
 import re
 JSON_FILE = "BD.json"
 import json
-#from confluent_kafka import Producer
+from confluent_kafka import Producer
 import pickle
 
 HEADER = 64

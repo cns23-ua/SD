@@ -6,6 +6,8 @@ import threading
 import json
 import secrets
 import string
+from confluent_kafka import Consumer, KafkaError
+import pickle
 
 
 HEADER = 64
@@ -19,7 +21,13 @@ class Dron:
         self.alias = "test"
         self.color = "Rojo"
         self.coordenada =Coordenada(1,1)
+<<<<<<< HEAD
         self.token = "tigOlsou2SxPAhdm20lINGlasi4OztnHRvU44QcT297Ji13Dz2VIqZHcx6UQb9wN"
+=======
+        self.token = ""
+        self.destino = Coordenada(1,1)
+        self.mapa = "mapa"
+>>>>>>> lpv24
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
@@ -62,6 +70,60 @@ class Dron:
                     resul = optima                   
                     
         return optima
+    
+    # !Kafka:
+    
+     # * Funcion que recibe el destino del dron mediante kafka
+    def recibir_destino(self, servidor_kafka, puerto_kafka):
+        consumer = Consumer({
+            "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
+            "group.id": "drones",
+            "auto.offset.reset": "earliest"
+        })
+
+        topic = "mapa_a_drones_topic"
+
+        consumer.subscribe([topic])
+
+        while True:
+            msg = consumer.poll(1.0)
+
+            if msg is None:
+                continue
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    continue
+                else:
+                    print(f"Error al recibir mensaje: {msg.error()}")
+            else:
+                print(f"Mensaje recibido: {pickle.loads(msg.value())}")
+                self.destino = pickle.loads(msg.value())
+
+    # * Función para recibir el mapa
+    def recibir_mapa(self, servidor_kafka, puerto_kafka):
+        consumer = Consumer({
+        "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
+        "group.id": "drones",
+        "auto.offset.reset": "earliest"
+        })
+
+        topic = "destinos_a_drones_topic"
+
+        consumer.subscribe([topic])
+
+        while True:
+            msg = consumer.poll(1.0)
+
+            if msg is None:
+                continue
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    continue
+                else:
+                    print(f"Error al recibir mensaje: {msg.error()}")
+            else:
+                print(f"Mensaje recibido: {pickle.loads(msg.value())}")
+                self.mapa = pickle.loads(msg.value())
     
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
