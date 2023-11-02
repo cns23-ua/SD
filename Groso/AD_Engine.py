@@ -122,17 +122,12 @@ class AD_Engine:
             except FileNotFoundError:
                 print("No se encontró el archivo")
                 data = {}  
-<<<<<<< HEAD
    
             # Comprobamos que el alias y el token están en el json
             
 
             message_to_send = "Rechazado"
             exito=False
-=======
-    
-            # Comprobamos que el alias y el token están en el json
->>>>>>> Dev
             for clave, valor in data.items():
                 token_for = valor.get('token', None)
                 if token_for==token:
