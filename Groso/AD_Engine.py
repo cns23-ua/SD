@@ -91,8 +91,7 @@ class AD_Engine:
         for figura in data['figuras']:
             nombre_figura = figura['Nombre'] 
             drones = figura['Drones']
-            
-            
+                       
             print(f"Nombre de la figura: {nombre_figura}")
             
             for drone in drones:
@@ -102,9 +101,7 @@ class AD_Engine:
                 pos_y = int(posicion.split(",")[1])
                 Cord = Coordenada(pos_x,pos_y)
                 figura_actual[id_drone] = Cord
-                
-                
-
+                               
             figuras[nombre_figura] = figura_actual
             figura_actual = {}
             # *? Ejemplo de figuras ("Pollito" : [5 : {2,3} , 6 : {5,6} .... ], "Corazón" : [....] , ....)
@@ -223,6 +220,10 @@ if (len(sys.argv) == 2):
     engine = AD_Engine("","","","","","")
     fichero = sys.argv[1]
     figuras = engine.procesar_fichero(fichero)
-    print(figuras)
+    print(figuras['Triangulo'])
+    
+    engine = engine.notificar_destinos(figuras['Triangulo'],"127.0.0.1",8083)
+    
+    
 
-
+#Las figuras ya funcionan
