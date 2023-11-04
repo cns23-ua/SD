@@ -16,7 +16,7 @@ FORMAT = 'utf-8'
 FIN = "FIN"
 MAX_CONEXIONES = 8
 JSON_FILE = "BD.json"
-SERVER = "127.0.0.3"
+SERVER = "127.0.0.4"
 
 
 class AD_Engine:
@@ -98,10 +98,10 @@ class AD_Engine:
             
             for drone in drones:
                 id_drone = (drone['ID'])
-                posicion = drone['POS']
-                pos_x = int(posicion.split(",")[0])
-                pos_y = int(posicion.split(",")[1])
-                Cord = Coordenada(pos_x,pos_y)
+                Cord = str(drone['POS'])
+                #pos_x = int(posicion.split(",")[0])
+                #pos_y = int(posicion.split(",")[1])
+                #Cord = pickle.dumps(Coordenada(pos_x,pos_y))
                 figura_actual[id_drone] = Cord
                                
             figuras[nombre_figura] = figura_actual
@@ -142,16 +142,17 @@ class AD_Engine:
                 return False
                 
     # *Notifica los destinos a los drones y los pone en marcha
-    def notificar_destinos(self, figura, servidor_kafka, puerto_kafka): # !KAFKA
+    def notificar_destinos(self, figuras, n_fig, servidor_kafka, puerto_kafka): # !KAFKA
         producer = Producer({"bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}"})
         topic = "destinos_a_drones_topic"
-
+        
+        for x in range(n_fig):
+            nombre, drones_figura = (next(iter(figuras.items())))
+           
+        drones_figura = json.dumps(drones_figura)
+        
         # Enviar los destinos a un topic de Kafka
-        for id_dron, destino in figura.items():
-            #Verificamos que los drones de la figura estén verificados
-            if (id_dron in self.drones):
-                producer.produce(topic, key=str(id_dron), value=pickle.dumps(destino))
-            
+        producer.produce(topic, value=drones_figura.encode('utf-8'))            
         producer.flush()
         
     # *Acaba con la acción
@@ -165,6 +166,7 @@ class AD_Engine:
         connected = True
         while connected:
             self.autenticar_dron(conn)
+            engine.notificar_destinos(figuras, 1, "127.0.0.1", 9092)
                  
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
@@ -217,10 +219,10 @@ if (len(sys.argv) == 2):
     engine = AD_Engine("","","","","","")
     fichero = sys.argv[1]
     figuras = engine.procesar_fichero(fichero)
-    print(figuras['Triangulo'])
-    
-    engine = engine.notificar_destinos(figuras['Triangulo'],"127.0.0.1",8083)
-    
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ADDR = (SERVER, PORT) 
+    server.bind(ADDR)
+    engine.start()
     
 
 #Las figuras ya funcionan
