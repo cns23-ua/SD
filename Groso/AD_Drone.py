@@ -17,12 +17,12 @@ class Dron:
     
     # *Constructor
     def __init__(self):
-        self.id = 190
+        self.id = 1
         self.alias = "test"
         self.color = "Rojo"
         self.coordenada =Coordenada(1,1)
-        self.token = ""
-        self.destino = Coordenada(1,1)
+        self.token = "prueba"
+        self.destino = ""
         self.mapa = "mapa"
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
@@ -77,23 +77,29 @@ class Dron:
             "auto.offset.reset": "earliest"
         })
 
-        topic = "mapa_a_drones_topic"
+        topic = "destinos_a_drones_topic"
 
         consumer.subscribe([topic])
+        
+        intentos = 10  # Número máximo de intentos
+        contador = 0
 
-        while True:
+        while contador < intentos:
             msg = consumer.poll(1.0)
-
-            if msg is None:
-                continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    continue
+            if msg is not None:
+                if msg.error():
+                    if msg.error().code() == KafkaError._PARTITION_EOF:
+                        continue
+                    else:
+                        print(f"Error al recibir mensaje: {msg.error()}")
                 else:
-                    print(f"Error al recibir mensaje: {msg.error()}")
-            else:
-                print(f"Mensaje recibido: {pickle.loads(msg.value())}")
-                self.destino = pickle.loads(msg.value())
+                    mensaje = msg.value().decode('utf-8')
+                    print("hola makina" + mensaje)
+                    self.destino = json.loads(mensaje)
+                    break  # Sale del bucle al recibir un mensaje exitoso
+            contador += 1
+
+        consumer.close()
 
     # * Función para recibir el mapa
     def recibir_mapa(self, servidor_kafka, puerto_kafka):
@@ -275,8 +281,8 @@ class Dron:
                 print("No se ha encontrado al dron ", alias , " en la base de datos ")
                         
         elif (opc==5):
-            sys.exit(1)
             cliente.close()
+            sys.exit(1)
 
         elif (opc==4):
             cliente_eng = dron.conectar_verify_engine(SERVER_eng,PORT_eng)
@@ -292,10 +298,13 @@ if (len(sys.argv) == 5):
     PORT = int(sys.argv[2])
     ADDR = (SERVER, PORT)   
     dron = Dron()
-    cliente_reg = dron.conectar_registri(SERVER,PORT)
+    #cliente_reg = dron.conectar_registri(SERVER,PORT)
     SERVER_eng = sys.argv[3]
     PORT_eng = int(sys.argv[4])
     ADDR_eng = (SERVER, PORT)
-    dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
+    #dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
+    dron.conectar_verify_engine(SERVER_eng, PORT_eng)
+    mensaje=""
     
-    
+    dron.recibir_destino("127.0.0.1", 9092)
+    print(dron.destino)
