@@ -94,7 +94,6 @@ class AD_Engine:
             nombre_figura = figura['Nombre'] 
             drones = figura['Drones']
                        
-            print(f"Nombre de la figura: {nombre_figura}")
             
             for drone in drones:
                 id_drone = (drone['ID'])
@@ -116,7 +115,6 @@ class AD_Engine:
             msg_length = int(msg_length)
             message = conn.recv(msg_length).decode(FORMAT)
             #Spliteamos el mensaje en alias y token y leemos el json
-            print("hola", message)
             alias = message.split()[0]
             id = int(message.split()[1])
             token = message.split()[2]  
@@ -132,8 +130,7 @@ class AD_Engine:
             # Comprobamos que el alias y el token están en el json
             for clave, valor in data.items():
                 if "token" in valor and valor["token"] == token:
-                    message_to_send = "Dron verificado"
-                    message_to_send = "Rechazado"
+                    message_to_send = "RUN"
                     self.enviar_mensaje(conn, message_to_send)
                     return False
             else:

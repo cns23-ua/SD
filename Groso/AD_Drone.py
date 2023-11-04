@@ -94,7 +94,6 @@ class Dron:
                         print(f"Error al recibir mensaje: {msg.error()}")
                 else:
                     mensaje = msg.value().decode('utf-8')
-                    print("hola makina" + mensaje)
                     self.destino = json.loads(mensaje)
                     break  # Sale del bucle al recibir un mensaje exitoso
             contador += 1
@@ -140,35 +139,44 @@ class Dron:
     # *Función que comunica con el servidor(engine) y hace lo que le mande
     def conectar_verify_engine(self, SERVER_eng, PORT_eng):              
         #Establece conexión con el servidor (engine)
-        try:
-            ADDR_eng = (SERVER_eng, PORT_eng)
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(ADDR_eng)
-           
-            print (f"Establecida conexión (engine) en [{ADDR_eng}]")          
-            #Una vez establecida la conexión
-            message = f"{self.alias} {self.id} {self.token}"      
-            self.enviar_mensaje(client , message)
-            orden = ""
-            #me espero  que me den la orden o ser rechazado
-            while  orden == "":
-                orden = self.receive_message(client)
-                print( "orden" + orden)
-                orden_preparada=orden.split(" ")
-            if orden=="Rechazado":
-                print("Conexion rechazada por el engine")
-                client.close()
-            elif (orden_preparada[0]=="RUN"):
-                pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
+        #try:
+        ADDR_eng = (SERVER_eng, PORT_eng)
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect(ADDR_eng)
+        
+        print (f"Establecida conexión (engine) en [{ADDR_eng}]")          
+        #Una vez establecida la conexión
+        message = f"{self.alias} {self.id} {self.token}"      
+        self.enviar_mensaje(client , message)
+        orden = ""
+        #me espero  que me den la orden o ser rechazado
+        while  orden == "":
+            orden = self.receive_message(client)
+        if orden=="Rechazado":
+            print("Conexion rechazada por el engine")
+            client.close()
+            
+        elif (orden=="RUN"):
+            print("estoy dentro")
+            dron.recibir_destino("127.0.0.1" , 9092)                       
+            #print("soy el ID", dron.destino[f"{self.id}"])
+            pos_fin = dron.obtener_valores_por_id(dron.destino)
+
+            """if pos_fin is not None:
                 while (self.estado=="Rojo"):
                     self.mover(pos_fin)
                     self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
-                client.send("Vuelvo a base")
-            elif orden=="END":
-                client.close()
-        except:
-            print("No se ha podido establecer conexión(engine)")
+                client.send("Vuelvo a base")"""
+                
+        elif orden=="END":
+            client.close()
+        #except:
+        #    print("No se ha podido establecer conexión(engine)")
         return client
+ 
+ 
+    def ordenes(cliente):
+        return
         
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
@@ -181,6 +189,14 @@ class Dron:
         except:
             print("No se ha podido establecer conexión(registri)")
         return client
+    
+    def obtener_valores_por_id(self, diccionario):
+        pos_final = None 
+        
+        if f"{self.id}" in diccionario: 
+            pos_final = diccionario[f"{self.id}"]  
+
+        return pos_final
 
     # *Menú del dron para interactuar con registry
     def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
@@ -287,8 +303,7 @@ class Dron:
         elif (opc==4):
             cliente_eng = dron.conectar_verify_engine(SERVER_eng,PORT_eng)
 
-        if(opc!=5):
-            dron.menu(SERVER,PORT, cliente_reg , SERVER_eng , PORT_eng)
+
             
             
 
@@ -306,5 +321,3 @@ if (len(sys.argv) == 5):
     dron.conectar_verify_engine(SERVER_eng, PORT_eng)
     mensaje=""
     
-    dron.recibir_destino("127.0.0.1", 9092)
-    print(dron.destino)
