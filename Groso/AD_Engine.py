@@ -68,6 +68,8 @@ class AD_Engine:
             print("No se ha podido establecer conexión(weather)")
             
         return tiempo
+          
+        
     
     # *Notifica del estado del mapa a los drones
     def enviar_tablero(self, servidor_kafka, puerto_kafka): # !KAFKA
@@ -131,11 +133,6 @@ class AD_Engine:
             for clave, valor in data.items():
                 if "token" in valor and valor["token"] == token:
                     message_to_send = "Dron verificado"
-                    self.enviar_mensaje(conn, message_to_send)
-                    self.drones.append(id)
-                    print(self.drones)
-                    return True
-                else:
                     message_to_send = "Rechazado"
                     self.enviar_mensaje(conn, message_to_send)
                     return False

@@ -74,7 +74,7 @@ class Dron:
         consumer = Consumer({
             "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
             "group.id": "drones",
-            "auto.offset.reset": "earliest"
+            "auto.offset.reset": "latest"
         })
 
         topic = "mapa_a_drones_topic"
