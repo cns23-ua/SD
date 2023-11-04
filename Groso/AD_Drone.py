@@ -7,8 +7,11 @@ import json
 import secrets
 import string
 from confluent_kafka import Consumer, KafkaError
+from kafka import KafkaConsumer
 import pickle
-
+#Consumidor.
+from kafka import KafkaConsumer
+from json import loads
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -71,19 +74,31 @@ class Dron:
     
      # * Funcion que recibe el destino del dron mediante kafka
     def recibir_destino(self, servidor_kafka, puerto_kafka):
-        consumer = Consumer({
-            "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
-            "group.id": "drones",
-            "auto.offset.reset": "earliest"
-        })
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
 
         topic = "destinos_a_drones_topic"
-
+        
         consumer.subscribe([topic])
         
         intentos = 10  # Número máximo de intentos
         contador = 0
+        
+        for msg in consumer:
+            if msg.value:
+                mensaje = loads(msg.value.decode('utf-8'))
+                print("hola makina" + str(mensaje))
+                self.destino = mensaje
+                break  # Sale del bucle al recibir un mensaje exitoso
 
+        '''
+        for msg in consumer:
+            if msg.value:
+                mensaje = msg.value().decode('utf-8')
+                print("hola makina" + mensaje)
+                self.destino = json.loads(mensaje)
+                break  # Sale del bucle al recibir un mensaje exitoso
+        '''
+        '''
         while contador < intentos:
             msg = consumer.poll(1.0)
             if msg is not None:
@@ -98,7 +113,7 @@ class Dron:
                     self.destino = json.loads(mensaje)
                     break  # Sale del bucle al recibir un mensaje exitoso
             contador += 1
-
+        '''
         consumer.close()
 
     # * Función para recibir el mapa

@@ -1,6 +1,8 @@
 import socket
 import sys
 import math
+import time
+from json import dumps
 from coordenada import *
 #from tablero import *
 from AD_Drone import *
@@ -9,6 +11,7 @@ JSON_FILE = "BD.json"
 import json
 from confluent_kafka import Producer
 import pickle
+from kafka import KafkaProducer
 
 HEADER = 64
 PORT = 5050
@@ -146,16 +149,17 @@ class AD_Engine:
                 
     # *Notifica los destinos a los drones y los pone en marcha
     def notificar_destinos(self, figuras, n_fig, servidor_kafka, puerto_kafka): # !KAFKA
-        producer = Producer({"bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}"})
+        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        
         topic = "destinos_a_drones_topic"
         
         for x in range(n_fig):
             nombre, drones_figura = (next(iter(figuras.items())))
            
-        drones_figura = json.dumps(drones_figura)
-        
-        # Enviar los destinos a un topic de Kafka
-        producer.produce(topic, value=drones_figura.encode('utf-8'))            
+        #drones_figura = json.dumps(drones_figura)
+        cadena = str(drones_figura)
+        time.sleep(0.3)
+        producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
         
     # *Acaba con la acción
@@ -169,7 +173,7 @@ class AD_Engine:
         connected = True
         while connected:
             self.autenticar_dron(conn)
-            engine.notificar_destinos(figuras, 1, "127.0.0.1", 9092)
+            engine.notificar_destinos(figuras, 2, "127.0.0.1", 9092)
                  
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
