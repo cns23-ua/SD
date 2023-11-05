@@ -74,13 +74,13 @@ class AD_Engine:
     
     # *Notifica del estado del mapa a los drones
     def enviar_tablero(self, servidor_kafka, puerto_kafka): # !KAFKA
-        producer = Producer({"bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}"})
+        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        
         topic = "mapa_a_drones_topic"
-
-        # Enviar el destino a un topic de Kafka
-        for dron in self.drones:
-            producer.produce(topic, key=str(dron), value=pickle.dumps(self.mapa))
-            
+           
+        #drones_figura = json.dumps(drones_figura)
+        time.sleep(0.3)
+        producer.send(topic, pickle.dumps(self.mapa).encode('utf-8'))
         producer.flush()
             
     # *Procesa el fichero de figuras
@@ -153,8 +153,14 @@ class AD_Engine:
         
         topic = "destinos_a_drones_topic"
         
-        for x in range(n_fig):
-            nombre, drones_figura = (next(iter(figuras.items())))
+        drones_figura=""
+        
+        cont=1
+        for clave in figuras:
+            if cont == n_fig:
+                drones_figura = figuras[clave]
+                break
+            cont=cont+1
            
         #drones_figura = json.dumps(drones_figura)
         cadena = str(drones_figura)

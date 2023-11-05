@@ -80,67 +80,25 @@ class Dron:
         
         consumer.subscribe([topic])
         
-        intentos = 10  # Número máximo de intentos
-        contador = 0
-        
         for msg in consumer:
             if msg.value:
                 mensaje = loads(msg.value.decode('utf-8'))
-                print("hola makina" + str(mensaje))
-                self.destino = mensaje
+                self.destino = eval(mensaje)
                 break  # Sale del bucle al recibir un mensaje exitoso
-
-        '''
-        for msg in consumer:
-            if msg.value:
-                mensaje = msg.value().decode('utf-8')
-                print("hola makina" + mensaje)
-                self.destino = json.loads(mensaje)
-                break  # Sale del bucle al recibir un mensaje exitoso
-        '''
-        '''
-        while contador < intentos:
-            msg = consumer.poll(1.0)
-            if msg is not None:
-                if msg.error():
-                    if msg.error().code() == KafkaError._PARTITION_EOF:
-                        continue
-                    else:
-                        print(f"Error al recibir mensaje: {msg.error()}")
-                else:
-                    mensaje = msg.value().decode('utf-8')
-                    print("hola makina" + mensaje)
-                    self.destino = json.loads(mensaje)
-                    break  # Sale del bucle al recibir un mensaje exitoso
-            contador += 1
-        '''
-        consumer.close()
 
     # * Función para recibir el mapa
     def recibir_mapa(self, servidor_kafka, puerto_kafka):
-        consumer = Consumer({
-        "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
-        "group.id": "drones",
-        "auto.offset.reset": "earliest"
-        })
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
 
-        topic = "destinos_a_drones_topic"
-
+        topic = "mapa_a_drones_topic"
+        
         consumer.subscribe([topic])
-
-        while True:
-            msg = consumer.poll(1.0)
-
-            if msg is None:
-                continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    continue
-                else:
-                    print(f"Error al recibir mensaje: {msg.error()}")
-            else:
-                print(f"Mensaje recibido: {pickle.loads(msg.value())}")
-                self.mapa = pickle.loads(msg.value())
+        
+        for msg in consumer:
+            if msg.value:
+                mensaje = pickle.loads(msg.value.decode('utf-8'))
+                self.mapa = mensaje
+                break  # Sale del bucle al recibir un mensaje exitoso
     
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
@@ -303,7 +261,7 @@ class Dron:
             cliente_eng = dron.conectar_verify_engine(SERVER_eng,PORT_eng)
 
         if(opc!=5):
-            dron.menu(SERVER,PORT, cliente_reg , SERVER_eng , PORT_eng)
+            dron.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
             
             
 
