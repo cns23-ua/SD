@@ -7,7 +7,11 @@ import json
 import secrets
 import string
 from confluent_kafka import Consumer, KafkaError
+from kafka import KafkaConsumer
 import pickle
+#Consumidor.
+from kafka import KafkaConsumer
+from json import loads
 
 
 HEADER = 64
@@ -40,91 +44,63 @@ class Dron:
         return message
         
     # *Encontramos el siguiente movimiento que debe hacer
-    def siguiente_mov(self, pos_fin):
-         
-        x = [-1,0,1]
-        y = [-1,0,1]
-        ini = self.coordenada
+    def siguiente_mov(self, pos_fin, pos_ini):
+        x = [-1, 0, 1]
+        y = [-1, 0, 1]
+        ini = pos_ini
         anterior = 30.0
-        optima = Coordenada(0,0)
-        resul = Coordenada(0,0)
-        
+        resul = [0, 0]
+
         for i in x:
             for j in y:
-                optima[0] = ini[0]+i
-                optima[1] = ini[1]+j
-                if (optima[0]>20):
-                    optima[0]=optima[0]-20
-                if (optima[0]<1):
-                    optima[0]=optima[0]+20
-                if (optima[1]>20):
-                    optima[1]=optima[1]-20
-                if (optima[1]<1): 
-                    optima[1]=optima[1]+20
-                if math.sqrt((optima[0]-pos_fin[0])**2+((optima[1]-pos_fin[1]**2)))<anterior:    
-                    anterior = math.sqrt((optima[0]-pos_fin[0])**2+((optima[1]-pos_fin[1]**2)))    
-                    resul = optima                   
-                    
-        return optima
+                optima = [ini[0] + i, ini[1] + j]
+
+                # Ajusta las coordenadas si salen del rango 1-20
+                for k in range(2):
+                    if optima[k] > 20:
+                        optima[k] -= 20
+                    if optima[k] < 1:
+                        optima[k] += 20
+
+                distancia = math.sqrt(((optima[0] - pos_fin[0]) ** 2) + ((optima[1] - pos_fin[1]) ** 2))
+
+                if distancia < anterior:
+                    print("x ", optima[0], "y ", optima[1], "valor ", distancia)
+                    anterior = distancia
+                    resul = optima
+
+        return resul
     
     # !Kafka:
     
      # * Funcion que recibe el destino del dron mediante kafka
     def recibir_destino(self, servidor_kafka, puerto_kafka):
-        consumer = Consumer({
-            "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
-            "group.id": "drones",
-            "auto.offset.reset": "latest"
-        })
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
 
         topic = "destinos_a_drones_topic"
-
+        
         consumer.subscribe([topic])
         
-        intentos = 10  # Número máximo de intentos
-        contador = 0
+        for msg in consumer:
+            if msg.value:
+                mensaje = loads(msg.value.decode('utf-8'))
+                self.destino = eval(mensaje)
+                break  # Sale del bucle al recibir un mensaje exitoso
 
-        while contador < intentos:
-            msg = consumer.poll(1.0)
-            if msg is not None:
-                if msg.error():
-                    if msg.error().code() == KafkaError._PARTITION_EOF:
-                        continue
-                    else:
-                        print(f"Error al recibir mensaje: {msg.error()}")
-                else:
-                    mensaje = msg.value().decode('utf-8')
-                    self.destino = json.loads(mensaje)
-                    break  # Sale del bucle al recibir un mensaje exitoso
-            contador += 1
-
-        consumer.close()
 
     # * Función para recibir el mapa
     def recibir_mapa(self, servidor_kafka, puerto_kafka):
-        consumer = Consumer({
-        "bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}",
-        "group.id": "drones",
-        "auto.offset.reset": "earliest"
-        })
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
 
-        topic = "destinos_a_drones_topic"
-
+        topic = "mapa_a_drones_topic"
+        
         consumer.subscribe([topic])
-
-        while True:
-            msg = consumer.poll(1.0)
-
-            if msg is None:
-                continue
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    continue
-                else:
-                    print(f"Error al recibir mensaje: {msg.error()}")
-            else:
-                print(f"Mensaje recibido: {pickle.loads(msg.value())}")
-                self.mapa = pickle.loads(msg.value())
+        
+        for msg in consumer:
+            if msg.value:
+                mensaje = pickle.loads(msg.value.decode('utf-8'))
+                self.mapa = mensaje
+                break  # Sale del bucle al recibir un mensaje exitoso
     
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
@@ -162,11 +138,11 @@ class Dron:
             #print("soy el ID", dron.destino[f"{self.id}"])
             pos_fin = dron.obtener_valores_por_id(dron.destino)
 
-            """if pos_fin is not None:
+            if pos_fin is not None:
                 while (self.estado=="Rojo"):
                     self.mover(pos_fin)
-                    self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
-                client.send("Vuelvo a base")"""
+                    #POR KAFKAself.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
+                client.send("Vuelvo a base")
                 
         elif orden=="END":
             client.close()
@@ -174,9 +150,6 @@ class Dron:
         #    print("No se ha podido establecer conexión(engine)")
         return client
  
- 
-    def ordenes(cliente):
-        return
         
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              

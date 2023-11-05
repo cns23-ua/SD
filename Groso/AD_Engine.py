@@ -1,6 +1,8 @@
 import socket
 import sys
 import math
+import time
+from json import dumps
 from coordenada import *
 #from tablero import *
 from AD_Drone import *
@@ -9,6 +11,7 @@ JSON_FILE = "BD.json"
 import json
 from confluent_kafka import Producer
 import pickle
+from kafka import KafkaProducer
 
 HEADER = 64
 PORT = 5050
@@ -73,13 +76,13 @@ class AD_Engine:
     
     # *Notifica del estado del mapa a los drones
     def enviar_tablero(self, servidor_kafka, puerto_kafka): # !KAFKA
-        producer = Producer({"bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}"})
+        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        
         topic = "mapa_a_drones_topic"
-
-        # Enviar el destino a un topic de Kafka
-        for dron in self.drones:
-            producer.produce(topic, key=str(dron), value=pickle.dumps(self.mapa))
             
+        #drones_figura = json.dumps(drones_figura)
+        time.sleep(0.3)
+        producer.send(topic, pickle.dumps(self.mapa).encode('utf-8'))
         producer.flush()
             
     # *Procesa el fichero de figuras
@@ -140,16 +143,23 @@ class AD_Engine:
                 
     # *Notifica los destinos a los drones y los pone en marcha
     def notificar_destinos(self, figuras, n_fig, servidor_kafka, puerto_kafka): # !KAFKA
-        producer = Producer({"bootstrap.servers": f"{servidor_kafka}:{puerto_kafka}"})
+        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        
         topic = "destinos_a_drones_topic"
         
-        for x in range(n_fig):
-            nombre, drones_figura = (next(iter(figuras.items())))
-           
-        drones_figura = json.dumps(drones_figura)
+        drones_figura=""
         
-        # Enviar los destinos a un topic de Kafka
-        producer.produce(topic, value=drones_figura.encode('utf-8'))            
+        cont=1
+        for clave in figuras:
+            if cont == n_fig:
+                drones_figura = figuras[clave]
+                break
+            cont=cont+1
+           
+        #drones_figura = json.dumps(drones_figura)
+        cadena = str(drones_figura)
+        time.sleep(0.3)
+        producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
         
     # *Acaba con la acción

@@ -55,32 +55,7 @@ class Tablero:
         y_text = (y0 + y1) / 2
         self.canvas.create_text(x_text, y_text, text=str(id), font=("Helvetica", 12))
 
-    def siguiente_mov(self, pos_fin, pos_ini):
-        x = [-1, 0, 1]
-        y = [-1, 0, 1]
-        ini = pos_ini
-        anterior = 30.0
-        resul = [0, 0]
-
-        for i in x:
-            for j in y:
-                optima = [ini[0] + i, ini[1] + j]
-
-                # Ajusta las coordenadas si salen del rango 1-20
-                for k in range(2):
-                    if optima[k] > 20:
-                        optima[k] -= 20
-                    if optima[k] < 1:
-                        optima[k] += 20
-
-                distancia = math.sqrt(((optima[0] - pos_fin[0]) ** 2) + ((optima[1] - pos_fin[1]) ** 2))
-
-                if distancia < anterior:
-                    print("x ", optima[0], "y ", optima[1], "valor ", distancia)
-                    anterior = distancia
-                    resul = optima
-
-        return resul
+    
 
 
 if __name__ == "__main__":
