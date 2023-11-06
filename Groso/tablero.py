@@ -15,8 +15,8 @@ class Tablero:
         enumeration_width = 40
 
         # Crear un lienzo (canvas) para el tablero con espacio adicional en la parte superior e izquierda
-        canvas_width = (filas * 30) + enumeration_width
-        canvas_height = (columnas * 30) + enumeration_width
+        canvas_width = (columnas * 30) + enumeration_width
+        canvas_height = (filas * 30) + enumeration_width
         self.canvas = tk.Canvas(root, width=canvas_width, height=canvas_height)
         self.canvas.pack()
 
@@ -24,7 +24,7 @@ class Tablero:
         for fila in range(filas):
             for columna in range(columnas):
                 x0 = columna * 30 + enumeration_width  # Añade espacio para enumeración en el margen izquierdo
-                y0 = fila * 30 + enumeration_width  # Añade espacio para enumeración en el margen superior
+                y0 = (filas - fila - 1) * 30 + enumeration_width  # Invierte el orden de las filas
                 x1 = x0 + 30
                 y1 = y0 + 30
                 cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill="white", outline="black")
@@ -41,12 +41,14 @@ class Tablero:
                 if fila == 0:
                     numero = columna + 1
                     x_text = (x0 + x1) / 2
-                    y_text = y0 - 15  # Coloca el número por encima del cuadro
+                    y_text = enumeration_width - 15  # Coloca el número encima del cuadro
                     self.canvas.create_text(x_text, y_text, text=str(numero), font=("Helvetica", 12))
 
     def dibujar_casilla(self, x, y, id, color):
-        x0 = x * 30 + 40  # Ajusta las coordenadas al tamaño de las casillas y el margen
-        y0 = (self.filas - y - 1) * 30 + 40  # Invierte las coordenadas en el eje y
+        x = x -1
+        y = y -1
+        x0 = x * 30 + 40
+        y0 = y * 30 + 40
         x1 = x0 + 30
         y1 = y0 + 30
         cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
@@ -54,6 +56,16 @@ class Tablero:
         x_text = (x0 + x1) / 2
         y_text = (y0 + y1) / 2
         self.canvas.create_text(x_text, y_text, text=str(id), font=("Helvetica", 12))
+        
+    def dibujar_casilla_sinId(self, x, y, color):
+        x = x -1
+        y = y -1
+        x0 = x * 30 + 40
+        y0 = y * 30 + 40
+        x1 = x0 + 30
+        y1 = y0 + 30
+        cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
+        self.cuadros.append(cuadro)
 
     def mover_contenido(self, pos_origen, pos_destino):
         cuadro = self.cuadros[pos_origen[0]-1][pos_origen[1]-1]
@@ -63,7 +75,31 @@ class Tablero:
 
         # Copia el cuadro a la nueva posición
         self.cuadros[pos_destino[0]-1][pos_destino[1]-1] = cuadro
+            
+    def introducir_en_posicion(self, x, y, objeto):
+        x = x -1
+        y = y -1
+        elemento=self.cuadros[x][y]
+        
+        if(elemento==0):
+            elemento=objeto
+        else:
+            elemento[0] = elemento[0] + objeto[0]
+            elemento[1] = elemento[1] + 1
+            elemento[2] = elemento[2] + objeto[2]
 
+    def dibujar_tablero(self):
+        for fila in range(self.filas):
+            for columna in range(self.columnas):
+                contenido=self.cuadros[fila][columna]
+                if(contenido!=0):
+                    for color in contenido[2]:
+                        pintura="green"
+                        if(color=="Rojo"):
+                            pintura="red"
+                            break
+                    self.dibujar_casilla_sinId(fila, columna, pintura)
+                
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -71,7 +107,11 @@ if __name__ == "__main__":
     
     # Llama a la función dibujar_casilla con coordenadas x, y, ID y color   
   
-    tablero.dibujar_casilla(2, 2, 2, "green")
-    tablero.dibujar_casilla(3, 3, 3, "red")
+    tablero.cuadros[7][7]=([1,2,3],3,["Verde"])
+    tablero.cuadros[4][4]=([1,2,3],3,["Rojo", "Verde"])
+    
+
+    
+    tablero.dibujar_tablero()
     
     root.mainloop()
