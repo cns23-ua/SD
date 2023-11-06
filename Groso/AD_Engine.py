@@ -107,7 +107,7 @@ class AD_Engine:
         producer.flush()
         
     # * Funcion que recibe el destino del dron mediante kafka
-    def recibir_destinos(self, servidor_kafka, puerto_kafka):
+    def recibir_posiciones(self, servidor_kafka, puerto_kafka):
         consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
 
         topic = "posicion_a_engine_topic"
@@ -191,7 +191,7 @@ class AD_Engine:
             cont = 0
             while cont<20:
                 self.enviar_tablero("127.0.0.1", 9092)
-                self.recibir_destinos("127.0.0.1", 9092)
+                self.recibir_posiciones("127.0.0.1", 9092) #necesitamos arreglar el formato de las posiciones
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
 
