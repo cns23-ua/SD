@@ -114,12 +114,13 @@ class Dron:
         producer.flush()
         
         # *Notifica los destinos a los drones y los pone en marcha
-    def notificar_posicion(self, servidor_kafka, puerto_kafka): # !KAFKA
+    def notificar_posicion(self, servidor_kafka, puerto_kafka, pos_vieja): # !KAFKA
         producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
         
         topic = "posicion_a_engine_topic"
            
-        cadena = str("Id: " + self.id + "Posicón: (" + self.posicion.x + "," + self.posicion.y + ")")
+        cadena = str("Id: (" + self.id + ") vieja: (" + pos_vieja.x + "," + pos_vieja.y + ") " +
+                     "nueva: (" + self.posicion.x + "," + self.posicion.y + ")")
         time.sleep(0.3)
         producer.send(topic, pickle.dumps(self.posicion))
         producer.flush()
@@ -315,8 +316,9 @@ if (len(sys.argv) == 5):
         mapa_actualizado=dron.recibir_mapa("127.0.0.1", 9092)
         if(mapa_actualizado != dron.mapa):
             dron.mapa = mapa_actualizado
+            pos_vieja=dron.posicion
             dron.mover(dron.destino)
-            dron.notificar_posicion("127.0.0.1", 9092)
+            dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)
             
             
             

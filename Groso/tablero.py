@@ -45,8 +45,6 @@ class Tablero:
                     self.canvas.create_text(x_text, y_text, text=str(numero), font=("Helvetica", 12))
 
     def dibujar_casilla(self, x, y, id, color):
-        x = x -1
-        y = y -1
         x0 = x * 30 + 40
         y0 = y * 30 + 40
         x1 = x0 + 30
@@ -58,8 +56,6 @@ class Tablero:
         self.canvas.create_text(x_text, y_text, text=str(id), font=("Helvetica", 12))
         
     def dibujar_casilla_sinId(self, x, y, color):
-        x = x -1
-        y = y -1
         x0 = x * 30 + 40
         y0 = y * 30 + 40
         x1 = x0 + 30
@@ -67,26 +63,49 @@ class Tablero:
         cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
         self.cuadros.append(cuadro)
 
-    def mover_contenido(self, pos_origen, pos_destino):
-        cuadro = self.cuadros[pos_origen[0]-1][pos_origen[1]-1]
-        print("Cuadro: " + str(cuadro))
-        # Borra el contenido del cuadro de origen
-        self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = 0
-
-        # Copia el cuadro a la nueva posición
-        self.cuadros[pos_destino[0]-1][pos_destino[1]-1] = cuadro
+    def mover_contenido(self, id, pos_origen, pos_destino):
+        
+        # Borramos el contenido del cuadro de origen teniendo en cuenta
+        # todo, que tanto que en el cuadro anterior hubiera varios drones
+        # o ninguno
+        if (self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]==1):
+            color_movido = self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2][0]
+            self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = 0
+        else:
+            posicion=0
+            ids=[]
+            colores=[]
+            for identificador in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]:
+                if identificador != id:
+                    posicion = posicion+1
+                    break
+            for identificador in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]:
+                if identificador != id:
+                    ids.append(identificador)
+            
+            ignorado = 0
+            color_movido = self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2][posicion]
+            for color in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2]:
+                if ignorado != posicion:
+                    colores.append(color)
+                ignorado = ignorado+1
+                    
+            vieja = (ids, self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]-1,colores)
+            self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = vieja
+                    
+        #Pasamos el dron indicado de la posición anterior a la que queremos
+        self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,[color_movido]))
             
     def introducir_en_posicion(self, x, y, objeto):
-        x = x -1
-        y = y -1
+        x = x-1
+        y = y-1
         elemento=self.cuadros[x][y]
         
         if(elemento==0):
-            elemento=objeto
+            self.cuadros[x][y]=objeto
         else:
-            elemento[0] = elemento[0] + objeto[0]
-            elemento[1] = elemento[1] + 1
-            elemento[2] = elemento[2] + objeto[2]
+            nueva = (elemento[0]+objeto[0], elemento[1]+1, elemento[2] + objeto[2])
+            self.cuadros[x][y] = nueva
 
     def dibujar_tablero(self):
         for fila in range(self.filas):
@@ -107,11 +126,17 @@ if __name__ == "__main__":
     
     # Llama a la función dibujar_casilla con coordenadas x, y, ID y color   
   
-    tablero.cuadros[7][7]=([1,2,3],3,["Verde"])
-    tablero.cuadros[4][4]=([1,2,3],3,["Rojo", "Verde"])
-    
-
-    
+    tablero.cuadros[7][7]=([1],1,["Verde"])
+    tablero.cuadros[4][4]=([1,2,3],3,["Verde", "Rojo", "Verde"])
+    tablero.introducir_en_posicion(1,1,([1, 3],2,["Rojo", "Verde"]))
+    tablero.introducir_en_posicion(1,1,([4],1,["Verde"]))
+    tablero.introducir_en_posicion(20,20,([1, 3],2,["Rojo", "Verde"]))
+    tablero.introducir_en_posicion(19,19,([4],1,["Verde"]))
+    tablero.mover_contenido(2,(8,8),(10,10))
+    tablero.mover_contenido(2,(5,5),(12,16))
+    print(tablero.cuadros[4][4])
+    print(tablero.cuadros[11][15])
+        
     tablero.dibujar_tablero()
     
     root.mainloop()
