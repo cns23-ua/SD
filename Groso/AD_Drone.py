@@ -290,3 +290,11 @@ if (len(sys.argv) == 5):
     dron.conectar_verify_engine(SERVER_eng, PORT_eng)
     mensaje=""
     
+    dron.recibir_destino("127.0.0.1", 9092)
+    dron.recibir_mapa("127.0.0.1", 9092)
+    dron.mapa.cuadros[1][1]=dron
+    print("mapa:" + str(dron.mapa.cuadros))
+    dron.mapa.cuadros[2][2]=dron
+    dron.mapa.mover_contenido((2,2),(20,20))
+    print("mapa:" + str(dron.mapa.cuadros))
+    print(dron.destino)
