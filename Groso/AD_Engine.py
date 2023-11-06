@@ -12,6 +12,8 @@ import json
 from confluent_kafka import Producer
 import pickle
 from kafka import KafkaProducer
+from kafka import KafkaConsumer
+from json import loads
 
 HEADER = 64
 PORT = 5050
@@ -104,6 +106,20 @@ class AD_Engine:
         producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
         
+    # * Funcion que recibe el destino del dron mediante kafka
+    def recibir_destinos(self, servidor_kafka, puerto_kafka):
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+
+        topic = "posicion_a_engine_topic"
+        
+        consumer.subscribe([topic])
+        
+        for msg in consumer:
+            if msg.value:
+                mensaje = loads(msg.value.decode('utf-8'))
+                self.destino = eval(mensaje)
+                break  # Sale del bucle al recibir un mensaje exitoso
+        
     # *Acaba con la acción
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
@@ -172,7 +188,10 @@ class AD_Engine:
         while connected:
             self.autenticar_dron(conn)
             self.notificar_destinos(figuras, 2, "127.0.0.1", 9092)
-            self.enviar_tablero("127.0.0.1", 9092)
+            cont = 0
+            while cont<20:
+                self.enviar_tablero("127.0.0.1", 9092)
+                self.recibir_destinos("127.0.0.1", 9092)
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
 
