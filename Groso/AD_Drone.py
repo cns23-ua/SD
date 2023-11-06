@@ -8,11 +8,11 @@ import secrets
 import string
 from confluent_kafka import Consumer, KafkaError
 from kafka import KafkaConsumer
-from tablero import *
 import pickle
 #Consumidor.
 from kafka import KafkaConsumer
 from json import loads
+
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -22,12 +22,12 @@ class Dron:
     # *Constructor
     def __init__(self):
         self.id = 1
-        self.alias = "prueba"
+        self.alias = "test"
         self.color = "Rojo"
         self.coordenada =Coordenada(1,1)
         self.token = "prueba"
         self.destino = ""
-        self.mapa = Tablero(tk.Tk(),20,20)
+        self.mapa = "mapa"
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
@@ -44,33 +44,32 @@ class Dron:
         return message
         
     # *Encontramos el siguiente movimiento que debe hacer
-    def siguiente_mov(self, pos_fin):
-         
-        x = [-1,0,1]
-        y = [-1,0,1]
-        ini = self.coordenada
+    def siguiente_mov(self, pos_fin, pos_ini):
+        x = [-1, 0, 1]
+        y = [-1, 0, 1]
+        ini = pos_ini
         anterior = 30.0
-        optima = Coordenada(0,0)
-        resul = Coordenada(0,0)
-        
+        resul = [0, 0]
+
         for i in x:
             for j in y:
-                optima[0] = ini[0]+i
-                optima[1] = ini[1]+j
-                if (optima[0]>20):
-                    optima[0]=optima[0]-20
-                if (optima[0]<1):
-                    optima[0]=optima[0]+20
-                if (optima[1]>20):
-                    optima[1]=optima[1]-20
-                if (optima[1]<1): 
-                    optima[1]=optima[1]+20
-                if math.sqrt((optima[0]-pos_fin[0])**2+((optima[1]-pos_fin[1]**2)))<anterior:    
-                    anterior = math.sqrt((optima[0]-pos_fin[0])**2+((optima[1]-pos_fin[1]**2)))    
-                    resul = optima                   
-                    
-        return optima
-    
+                optima = [ini[0] + i, ini[1] + j]
+
+                # Ajusta las coordenadas si salen del rango 1-20
+                for k in range(2):
+                    if optima[k] > 20:
+                        optima[k] -= 20
+                    if optima[k] < 1:
+                        optima[k] += 20
+
+                distancia = math.sqrt(((optima[0] - pos_fin[0]) ** 2) + ((optima[1] - pos_fin[1]) ** 2))
+
+                if distancia < anterior:
+                    print("x ", optima[0], "y ", optima[1], "valor ", distancia)
+                    anterior = distancia
+                    resul = optima
+
+        return resul   
     # !Kafka:
     
      # * Funcion que recibe el destino del dron mediante kafka
@@ -87,6 +86,7 @@ class Dron:
                 self.destino = eval(mensaje)
                 break  # Sale del bucle al recibir un mensaje exitoso
 
+
     # * Función para recibir el mapa
     def recibir_mapa(self, servidor_kafka, puerto_kafka):
         consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
@@ -97,8 +97,8 @@ class Dron:
         
         for msg in consumer:
             if msg.value:
-                mensaje = pickle.loads(msg.value)
-                self.mapa.cuadros = mensaje
+                mensaje = pickle.loads(msg.value.decode('utf-8'))
+                self.mapa = mensaje
                 break  # Sale del bucle al recibir un mensaje exitoso
     
     # * Funcion que envia un mensaje al servidor
@@ -114,35 +114,41 @@ class Dron:
     # *Función que comunica con el servidor(engine) y hace lo que le mande
     def conectar_verify_engine(self, SERVER_eng, PORT_eng):              
         #Establece conexión con el servidor (engine)
-        try:
-            ADDR_eng = (SERVER_eng, PORT_eng)
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(ADDR_eng)
-           
-            print (f"Establecida conexión (engine) en [{ADDR_eng}]")          
-            #Una vez establecida la conexión
-            message = f"{self.alias} {self.id} {self.token}"      
-            self.enviar_mensaje(client , message)
-            orden = ""
-            #me espero  que me den la orden o ser rechazado
-            while  orden == "":
-                orden = self.receive_message(client)
-                print( "orden" + orden)
-                orden_preparada=orden.split(" ")
-            if orden=="Rechazado":
-                print("Conexion rechazada por el engine")
-                client.close()
-            elif (orden_preparada[0]=="RUN"):
-                pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
+        #try:
+        ADDR_eng = (SERVER_eng, PORT_eng)
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect(ADDR_eng)
+        
+        print (f"Establecida conexión (engine) en [{ADDR_eng}]")          
+        #Una vez establecida la conexión
+        message = f"{self.alias} {self.id} {self.token}"      
+        self.enviar_mensaje(client , message)
+        orden = ""
+        #me espero  que me den la orden o ser rechazado
+        while  orden == "":
+            orden = self.receive_message(client)
+        if orden=="Rechazado":
+            print("Conexion rechazada por el engine")
+            client.close()
+            
+        elif (orden=="RUN"):
+            print("estoy dentro")
+            dron.recibir_destino("127.0.0.1" , 9092)                       
+            #print("soy el ID", dron.destino[f"{self.id}"])
+            pos_fin = dron.obtener_valores_por_id(dron.destino)
+
+            if pos_fin is not None:
                 while (self.estado=="Rojo"):
                     self.mover(pos_fin)
-                    self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
+                    #POR KAFKAself.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
                 client.send("Vuelvo a base")
-            elif orden=="END":
-                client.close()
-        except:
-            print("No se ha podido establecer conexión(engine)")
+                
+        elif orden=="END":
+            client.close()
+        #except:
+        #    print("No se ha podido establecer conexión(engine)")
         return client
+ 
         
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
@@ -155,6 +161,14 @@ class Dron:
         except:
             print("No se ha podido establecer conexión(registri)")
         return client
+    
+    def obtener_valores_por_id(self, diccionario):
+        pos_final = None 
+        
+        if f"{self.id}" in diccionario: 
+            pos_final = diccionario[f"{self.id}"]  
+
+        return pos_final
 
     # *Menú del dron para interactuar con registry
     def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
@@ -261,12 +275,8 @@ class Dron:
         elif (opc==4):
             cliente_eng = dron.conectar_verify_engine(SERVER_eng,PORT_eng)
 
-        if(opc!=5):
-            dron.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
-            
-            
 
-
+            
 if (len(sys.argv) == 5):
     SERVER = sys.argv[1]
     PORT = int(sys.argv[2])
@@ -280,11 +290,3 @@ if (len(sys.argv) == 5):
     dron.conectar_verify_engine(SERVER_eng, PORT_eng)
     mensaje=""
     
-    dron.recibir_destino("127.0.0.1", 9092)
-    dron.recibir_mapa("127.0.0.1", 9092)
-    dron.mapa.cuadros[1][1]=dron
-    print("mapa:" + str(dron.mapa.cuadros))
-    dron.mapa.cuadros[2][2]=dron
-    dron.mapa.mover_contenido((2,2),(20,20))
-    print("mapa:" + str(dron.mapa.cuadros))
-    print(dron.destino)
