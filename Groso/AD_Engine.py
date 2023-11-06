@@ -4,7 +4,7 @@ import math
 import time
 from json import dumps
 from coordenada import *
-#from tablero import *
+from tablero import *
 from AD_Drone import *
 import re
 JSON_FILE = "BD.json"
@@ -19,14 +19,14 @@ FORMAT = 'utf-8'
 FIN = "FIN"
 MAX_CONEXIONES = 8
 JSON_FILE = "BD.json"
-SERVER = "127.0.0.4"
+SERVER = "127.0.0.2"
 
 
 class AD_Engine:
         
     # *Constructor
     def __init__(self,puerto_escucha, n_maxDrones, ip_broker ,puerto_broker,ip_weather, puerto_weather):
-        self.mapa = ""
+        self.mapa = Tablero(tk.Tk(),20,20).cuadros
         self.puerto_escucha = puerto_escucha
         self.n_maxDrones = n_maxDrones
         self.ip_broker = ip_broker
@@ -79,11 +79,34 @@ class AD_Engine:
         producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
         
         topic = "mapa_a_drones_topic"
-           
-        #drones_figura = json.dumps(drones_figura)
+                      
         time.sleep(0.3)
-        producer.send(topic, pickle.dumps(self.mapa).encode('utf-8'))
+        producer.send(topic, pickle.dumps(self.mapa))
         producer.flush()
+        
+        # *Notifica los destinos a los drones y los pone en marcha
+    def notificar_destinos(self, figuras, n_fig, servidor_kafka, puerto_kafka): # !KAFKA
+        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        
+        topic = "destinos_a_drones_topic"
+        
+        drones_figura=""
+        
+        cont=1
+        for clave in figuras:
+            if cont == n_fig:
+                drones_figura = figuras[clave]
+                break
+            cont=cont+1
+           
+        cadena = str(drones_figura)
+        time.sleep(0.3)
+        producer.send(topic, dumps(cadena).encode('utf-8'))
+        producer.flush()
+        
+    # *Acaba con la acción
+    def stop(self):
+        Hay_que_rellenar = "Hay que rellenar"
             
     # *Procesa el fichero de figuras
     def procesar_fichero(self, fichero):
@@ -136,50 +159,23 @@ class AD_Engine:
             for clave, valor in data.items():
                 if "token" in valor and valor["token"] == token:
                     message_to_send = "Dron verificado"
-                    message_to_send = "Rechazado"
                     self.enviar_mensaje(conn, message_to_send)
                     return False
             else:
                 message_to_send = "Rechazado"
                 self.enviar_mensaje(conn, message_to_send)
                 return False
-                
-    # *Notifica los destinos a los drones y los pone en marcha
-    def notificar_destinos(self, figuras, n_fig, servidor_kafka, puerto_kafka): # !KAFKA
-        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
-        
-        topic = "destinos_a_drones_topic"
-        
-        drones_figura=""
-        
-        cont=1
-        for clave in figuras:
-            if cont == n_fig:
-                drones_figura = figuras[clave]
-                break
-            cont=cont+1
-           
-        #drones_figura = json.dumps(drones_figura)
-        cadena = str(drones_figura)
-        time.sleep(0.3)
-        producer.send(topic, dumps(cadena).encode('utf-8'))
-        producer.flush()
-        
-    # *Acaba con la acción
-    def stop(self):
-        Hay_que_rellenar = "Hay que rellenar"
-    
-    
         
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         connected = True
         while connected:
             self.autenticar_dron(conn)
-            engine.notificar_destinos(figuras, 2, "127.0.0.1", 9092)
-                 
+            self.notificar_destinos(figuras, 2, "127.0.0.1", 9092)
+            self.enviar_tablero("127.0.0.1", 9092)
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
+
 
     def start(self):
         server.listen()

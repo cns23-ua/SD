@@ -28,7 +28,7 @@ class Tablero:
                 x1 = x0 + 30
                 y1 = y0 + 30
                 cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill="white", outline="black")
-                self.cuadros[fila][columna] = cuadro
+                self.cuadros[fila][columna] = 0
 
                 # Enumerar los cuadros en el margen izquierdo
                 if columna == 0:
@@ -55,32 +55,14 @@ class Tablero:
         y_text = (y0 + y1) / 2
         self.canvas.create_text(x_text, y_text, text=str(id), font=("Helvetica", 12))
 
-    def siguiente_mov(self, pos_fin, pos_ini):
-        x = [-1, 0, 1]
-        y = [-1, 0, 1]
-        ini = pos_ini
-        anterior = 30.0
-        resul = [0, 0]
+    def mover_contenido(self, pos_origen, pos_destino):
+        cuadro = self.cuadros[pos_origen[0]-1][pos_origen[1]-1]
+        print("Cuadro: " + str(cuadro))
+        # Borra el contenido del cuadro de origen
+        self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = 0
 
-        for i in x:
-            for j in y:
-                optima = [ini[0] + i, ini[1] + j]
-
-                # Ajusta las coordenadas si salen del rango 1-20
-                for k in range(2):
-                    if optima[k] > 20:
-                        optima[k] -= 20
-                    if optima[k] < 1:
-                        optima[k] += 20
-
-                distancia = math.sqrt(((optima[0] - pos_fin[0]) ** 2) + ((optima[1] - pos_fin[1]) ** 2))
-
-                if distancia < anterior:
-                    print("x ", optima[0], "y ", optima[1], "valor ", distancia)
-                    anterior = distancia
-                    resul = optima
-
-        return resul
+        # Copia el cuadro a la nueva posición
+        self.cuadros[pos_destino[0]-1][pos_destino[1]-1] = cuadro
 
 
 if __name__ == "__main__":

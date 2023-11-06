@@ -8,6 +8,7 @@ import secrets
 import string
 from confluent_kafka import Consumer, KafkaError
 from kafka import KafkaConsumer
+from tablero import *
 import pickle
 #Consumidor.
 from kafka import KafkaConsumer
@@ -21,12 +22,12 @@ class Dron:
     # *Constructor
     def __init__(self):
         self.id = 1
-        self.alias = "test"
+        self.alias = "prueba"
         self.color = "Rojo"
         self.coordenada =Coordenada(1,1)
         self.token = "prueba"
         self.destino = ""
-        self.mapa = "mapa"
+        self.mapa = Tablero(tk.Tk(),20,20)
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
@@ -96,8 +97,8 @@ class Dron:
         
         for msg in consumer:
             if msg.value:
-                mensaje = pickle.loads(msg.value.decode('utf-8'))
-                self.mapa = mensaje
+                mensaje = pickle.loads(msg.value)
+                self.mapa.cuadros = mensaje
                 break  # Sale del bucle al recibir un mensaje exitoso
     
     # * Funcion que envia un mensaje al servidor
@@ -280,4 +281,10 @@ if (len(sys.argv) == 5):
     mensaje=""
     
     dron.recibir_destino("127.0.0.1", 9092)
+    dron.recibir_mapa("127.0.0.1", 9092)
+    dron.mapa.cuadros[1][1]=dron
+    print("mapa:" + str(dron.mapa.cuadros))
+    dron.mapa.cuadros[2][2]=dron
+    dron.mapa.mover_contenido((2,2),(20,20))
+    print("mapa:" + str(dron.mapa.cuadros))
     print(dron.destino)
