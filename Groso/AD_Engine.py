@@ -119,15 +119,16 @@ class AD_Engine:
         for msg in consumer:
             if msg.value:
                 mensaje = loads(msg.value.decode('utf-8'))
-                self.destino = eval(mensaje)
+                
                 break  # Sale del bucle al recibir un mensaje exitoso
         
-        id = int(mensaje[6:7])
-        viejax = int(mensaje[18:19])
-        viejay = int(mensaje[20:21])
-        nuevax = int(mensaje[31:32])
-        nuevay = int(mensaje[33:34])
-        
+        separado = mensaje.split(',')
+        id = int(separado[0])
+        viejax = int(separado[1])
+        viejay = int(separado[2])
+        nuevax = int(separado[3])
+        nuevay = int(separado[4])
+        print(f"({id}, {viejax}, {viejay}, ({nuevax}, {nuevay}))")
         return (id, (viejax, viejay), (nuevax, nuevay))
         
     # *Acaba con la acción
@@ -215,6 +216,7 @@ class AD_Engine:
                 self.mapa.mover_contenido(tupla[0],tupla[1],tupla[2])
                 self.dibujar_tablero_engine()
                 cont=cont+1
+                print(cont)
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
 

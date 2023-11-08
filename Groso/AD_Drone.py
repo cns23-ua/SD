@@ -33,8 +33,9 @@ class Dron:
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
-        self.posicion = self.siguiente_mov(pos_fin)
-        if (self.posicion[0]==pos_fin[0] and self.posicion[1]==pos_fin[1]):
+        self.coordenada = self.siguiente_mov(pos_fin)
+        print(self.coordenada.x,self.coordenada.y)
+        if (self.coordenada.x==pos_fin.x and self.coordenada.y==pos_fin.y):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
         
     def receive_message(self, client):
@@ -47,31 +48,32 @@ class Dron:
         
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
-         
-        x = [-1,0,1]
-        y = [-1,0,1]
-        ini = self.coordenada
+        x = [-1, 0, 1]
+        y = [-1, 0, 1]
+        ini = [self.coordenada.x, self.coordenada.y]  # Obtener las coordenadas de pos_ini
         anterior = 30.0
-        optima = Coordenada(0,0)
-        resul = Coordenada(0,0)
-        
+        resul = Coordenada(0, 0)  # Inicializar el resultado como una Coordenada
+
         for i in x:
             for j in y:
-                optima[0] = ini[0]+i
-                optima[1] = ini[1]+j
-                if (optima[0]>20):
-                    optima[0]=optima[0]-20
-                if (optima[0]<1):
-                    optima[0]=optima[0]+20
-                if (optima[1]>20):
-                    optima[1]=optima[1]-20
-                if (optima[1]<1): 
-                    optima[1]=optima[1]+20
-                if math.sqrt((optima[0]-pos_fin[0])**2+((optima[1]-pos_fin[1]**2)))<anterior:    
-                    anterior = math.sqrt((optima[0]-pos_fin[0])**2+((optima[1]-pos_fin[1]**2)))    
-                    resul = optima                   
-                    
-        return optima
+                optima = [ini[0] + i, ini[1] + j]
+
+                # Ajusta las coordenadas si salen del rango 1-20
+                for k in range(2):
+                    if optima[k] > 20:
+                        optima[k] -= 20
+                    if optima[k] < 1:
+                        optima[k] += 20
+
+                distancia = math.sqrt(((optima[0] - pos_fin.x) ** 2) + ((optima[1] - pos_fin.y) ** 2))
+
+                if distancia < anterior:
+                    anterior = distancia
+                    resul.x =optima[0]  # Actualiza el resultado como una Coordenada
+                    resul.y =optima[1]
+        return resul
+
+
     
     # !Kafka:
     
@@ -86,7 +88,10 @@ class Dron:
         for msg in consumer:
             if msg.value:
                 mensaje = loads(msg.value.decode('utf-8'))
-                self.destino = eval(mensaje)
+                self.destino = eval(mensaje)[self.id]
+                x = int(self.destino.split(",")[0])
+                y = int(self.destino.split(",")[1])
+                self.destino = Coordenada(x,y)
                 break  # Sale del bucle al recibir un mensaje exitoso
 
     # * Función para recibir el mapa
@@ -100,9 +105,10 @@ class Dron:
         for msg in consumer:
             if msg.value:
                 mensaje = pickle.loads(msg.value)
-                self.mapa.cuadros = mensaje
+                
                 break  # Sale del bucle al recibir un mensaje exitoso
             
+        return mensaje
     # *Notifica del estado del mapa a los drones
     def enviar_tablero(self, servidor_kafka, puerto_kafka): # !KAFKA
         producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
@@ -119,10 +125,10 @@ class Dron:
         
         topic = "posicion_a_engine_topic"
            
-        cadena = str("Id: (" + self.id + ") vieja: (" + pos_vieja.x + "," + pos_vieja.y + ") " +
-                     "nueva: (" + self.posicion.x + "," + self.posicion.y + ")") 
+        #cadena = f"Id: ({self.id}) vieja: ({pos_vieja.x},{pos_vieja.y}) nueva: ({self.coordenada.x },{self.coordenada.y})" 
+        cadena = f"{self.id},{pos_vieja.x},{pos_vieja.y},{self.coordenada.x },{self.coordenada.y}"
         time.sleep(0.3)
-        producer.send(topic, pickle.dumps(self.posicion))
+        producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
     
     # * Funcion que envia un mensaje al servidor
@@ -157,8 +163,10 @@ class Dron:
                 print("Conexion rechazada por el engine")
                 client.close()
             elif (orden_preparada[0]=="RUN"):
+               
                 pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
                 while (self.estado=="Rojo"):
+                    
                     self.mover(pos_fin)
                     self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
                 client.send("Vuelvo a base")
@@ -288,7 +296,11 @@ class Dron:
         if(opc!=5):
             dron.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
             
-            
+    def dibujar_tablero_dron(self):
+        root = tk.Tk()
+        tablero = Tablero(root, 20, 20)
+        tablero.cuadros=self.mapa.cuadros
+        tablero.dibujar_tablero()
 
 
 if (len(sys.argv) == 5):
@@ -307,12 +319,16 @@ if (len(sys.argv) == 5):
     dron.recibir_destino("127.0.0.1", 9092)
 
     while(dron.color=="Rojo"):
-        mapa_actualizado=dron.recibir_mapa("127.0.0.1", 9092)
-        if(mapa_actualizado != dron.mapa):
-            dron.mapa = mapa_actualizado
+        
+        mapa_actualizado_cuadros = dron.recibir_mapa("127.0.0.1", 9092)
+        #dron.dibujar_tablero_dron()
+        if(mapa_actualizado_cuadros != dron.mapa.cuadros):
+            dron.mapa.cuadros = mapa_actualizado_cuadros
             pos_vieja=dron.coordenada
             dron.mover(dron.destino)
+            time.sleep(0.5)
             dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+            
             
             
             
