@@ -26,7 +26,7 @@ class Dron:
         self.id = 1
         self.alias = "prueba"
         self.color = "Rojo"
-        self.coordenada =Coordenada(1,1)
+        self.coordenada = Coordenada(1,1)
         self.token = "prueba"
         self.destino = ""
         self.mapa = Tablero(tk.Tk(),20,20)
@@ -120,7 +120,7 @@ class Dron:
         topic = "posicion_a_engine_topic"
            
         cadena = str("Id: (" + self.id + ") vieja: (" + pos_vieja.x + "," + pos_vieja.y + ") " +
-                     "nueva: (" + self.posicion.x + "," + self.posicion.y + ")")
+                     "nueva: (" + self.posicion.x + "," + self.posicion.y + ")") 
         time.sleep(0.3)
         producer.send(topic, pickle.dumps(self.posicion))
         producer.flush()
@@ -305,18 +305,12 @@ if (len(sys.argv) == 5):
     mensaje=""
     
     dron.recibir_destino("127.0.0.1", 9092)
-    dron.recibir_mapa("127.0.0.1", 9092)
-    dron.mapa.cuadros[1][1]=dron
-    print("mapa:" + str(dron.mapa.cuadros))
-    dron.mapa.mover_contenido((2,2),(20,20))
-    print("mapa:" + str(dron.mapa.cuadros))
-    print(dron.destino)
 
     while(dron.color=="Rojo"):
         mapa_actualizado=dron.recibir_mapa("127.0.0.1", 9092)
         if(mapa_actualizado != dron.mapa):
             dron.mapa = mapa_actualizado
-            pos_vieja=dron.posicion
+            pos_vieja=dron.coordenada
             dron.mover(dron.destino)
             dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)
             

@@ -68,10 +68,14 @@ class Tablero:
         # Borramos el contenido del cuadro de origen teniendo en cuenta
         # todo, que tanto que en el cuadro anterior hubiera varios drones
         # o ninguno
-        if (self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]==1):
+        if (self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]==1 and 
+            id in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]):
             color_movido = self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2][0]
             self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = 0
-        else:
+            #Pasamos el dron indicado de la posición anterior a la que queremos
+            self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,[color_movido]))
+        elif(self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]>1 and 
+            id in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]):
             posicion=0
             ids=[]
             colores=[]
@@ -92,9 +96,9 @@ class Tablero:
                     
             vieja = (ids, self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]-1,colores)
             self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = vieja
-                    
-        #Pasamos el dron indicado de la posición anterior a la que queremos
-        self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,[color_movido]))
+
+            #Pasamos el dron indicado de la posición anterior a la que queremos
+            self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,[color_movido]))
             
     def introducir_en_posicion(self, x, y, objeto):
         x = x-1
@@ -107,6 +111,7 @@ class Tablero:
             nueva = (elemento[0]+objeto[0], elemento[1]+1, elemento[2] + objeto[2])
             self.cuadros[x][y] = nueva
 
+                    
     def dibujar_tablero(self):
         for fila in range(self.filas):
             for columna in range(self.columnas):
@@ -117,8 +122,14 @@ class Tablero:
                         if(color=="Rojo"):
                             pintura="red"
                             break
-                    self.dibujar_casilla_sinId(fila, columna, pintura)
+                    self.dibujar_casilla(fila, columna, contenido[0][len(contenido[0])-1], pintura)
+        self.root.mainloop()
                 
+    def estado_final(self, x, y):
+        x=x-1
+        y=y-1
+        tupla_nueva=(self.cuadros[x][y][0],self.cuadros[x][y][1],["Verde"])
+        self.cuadros[x][y]=tupla_nueva
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -136,7 +147,8 @@ if __name__ == "__main__":
     tablero.mover_contenido(2,(5,5),(12,16))
     print(tablero.cuadros[4][4])
     print(tablero.cuadros[11][15])
+    print(tablero.cuadros[9][9])
+    tablero.estado_final(1,1)
         
     tablero.dibujar_tablero()
     
-    root.mainloop()
