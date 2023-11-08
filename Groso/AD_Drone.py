@@ -97,7 +97,7 @@ class Dron:
         
         for msg in consumer:
             if msg.value:
-                mensaje = pickle.loads(msg.value.decode('utf-8'))
+                mensaje = pickle.loads(msg.value)
                 self.mapa = mensaje
                 break  # Sale del bucle al recibir un mensaje exitoso
     
