@@ -1,0 +1,12 @@
+{ 
+    "figuras":[
+        { 
+            "Nombre":"Triangulo",
+            "Drones":[{
+                "ID":1,
+                "POS":"10,19"
+                }
+            ]
+        }
+    ]
+}
