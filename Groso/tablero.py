@@ -134,7 +134,10 @@ class Tablero:
     def estado_final(self, x, y):
         x=x-1
         y=y-1
+        print(self.cuadros[x][y])
+        print(self.cuadros[x][y])
         tupla_nueva=(self.cuadros[x][y][0],self.cuadros[x][y][1],["Verde"])
+        print(tupla_nueva)
         self.cuadros[x][y]=tupla_nueva
 
 if __name__ == "__main__":

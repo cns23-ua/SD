@@ -332,15 +332,18 @@ if (len(sys.argv) == 5):
     dron.recibir_destino("127.0.0.1", 9092)
 
     while(dron.color=="Rojo"):
-        
         mapa_actualizado_cuadros = dron.recibir_mapa("127.0.0.1", 9092)
         #dron.dibujar_tablero_dron()
         if(mapa_actualizado_cuadros != dron.mapa.cuadros):
             dron.mapa.cuadros = mapa_actualizado_cuadros
             pos_vieja=dron.coordenada
             dron.mover(dron.destino)
+<<<<<<< HEAD
             time.sleep(0.5)
             dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)"""
+=======
+            dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+>>>>>>> lpv24
             
             
             
