@@ -194,11 +194,15 @@ class AD_Engine:
                 self.enviar_mensaje(conn, message_to_send)
                 return False
             
+    
+    
     def dibujar_tablero_engine(self):
         root = tk.Tk()
         tablero = Tablero(root, 20, 20)
         tablero.cuadros=self.mapa.cuadros
         tablero.dibujar_tablero()
+        
+    
         
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
@@ -244,7 +248,8 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 8):
-    fichero=""
+    fichero="AwD_figuras.json"
+    
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
@@ -259,13 +264,14 @@ if (len(sys.argv) == 8):
     server.bind(ADDR)
     print("[STARTING] Servidor inicializándose...")  
     engine = AD_Engine(puerto_escucha,max_drones, ip_broker ,puerto_broker,ip_weather, puerto_weather)
+    engine.procesar_fichero(fichero)
     if fichero != "":   
         engine.start()
         
 
-if (len(sys.argv) == 2):
+
     engine = AD_Engine("","","","","","")
-    fichero = sys.argv[1]
+    
     engine.procesar_fichero(fichero)
     print(engine.figuras)
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

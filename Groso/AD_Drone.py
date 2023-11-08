@@ -34,7 +34,6 @@ class Dron:
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
         self.coordenada = self.siguiente_mov(pos_fin)
-        print(self.coordenada.x,self.coordenada.y)
         if (self.coordenada.x==pos_fin.x and self.coordenada.y==pos_fin.y):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
         
@@ -291,7 +290,21 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
-            cliente_eng = dron.conectar_verify_engine(SERVER_eng,PORT_eng)
+            cliente_eng = self.conectar_verify_engine(SERVER_eng,PORT_eng)
+            mensaje=""
+    
+            self.recibir_destino("127.0.0.1", 9092)
+
+            while(self.color=="Rojo"):
+                
+                mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                #dron.dibujar_tablero_dron()
+                if(mapa_actualizado_cuadros != self.mapa.cuadros):
+                    self.mapa.cuadros = mapa_actualizado_cuadros
+                    pos_vieja=self.coordenada
+                    self.mover(self.destino)
+                    time.sleep(0.5)
+                    self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
 
         if(opc!=5):
             dron.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
@@ -308,12 +321,12 @@ if (len(sys.argv) == 5):
     PORT = int(sys.argv[2])
     ADDR = (SERVER, PORT)   
     dron = Dron()
-    #cliente_reg = dron.conectar_registri(SERVER,PORT)
+    cliente_reg = dron.conectar_registri(SERVER,PORT)
     SERVER_eng = sys.argv[3]
     PORT_eng = int(sys.argv[4])
     ADDR_eng = (SERVER, PORT)
-    #dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
-    dron.conectar_verify_engine(SERVER_eng, PORT_eng)
+    dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
+    """dron.conectar_verify_engine(SERVER_eng, PORT_eng)
     mensaje=""
     
     dron.recibir_destino("127.0.0.1", 9092)
@@ -327,7 +340,7 @@ if (len(sys.argv) == 5):
             pos_vieja=dron.coordenada
             dron.mover(dron.destino)
             time.sleep(0.5)
-            dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+            dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)"""
             
             
             
