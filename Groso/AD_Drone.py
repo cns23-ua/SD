@@ -4,10 +4,12 @@ import sys
 import math
 import threading
 import json
+import time
 import secrets
+from json import dumps
 import string
 from confluent_kafka import Consumer, KafkaError
-from kafka import KafkaConsumer
+from kafka import KafkaProducer
 from tablero import *
 import pickle
 #Consumidor.
@@ -24,7 +26,7 @@ class Dron:
         self.id = 1
         self.alias = "prueba"
         self.color = "Rojo"
-        self.coordenada =Coordenada(1,1)
+        self.coordenada = Coordenada(1,1)
         self.token = "prueba"
         self.destino = ""
         self.mapa = Tablero(tk.Tk(),20,20)
@@ -73,7 +75,7 @@ class Dron:
     
     # !Kafka:
     
-     # * Funcion que recibe el destino del dron mediante kafka
+    # * Funcion que recibe el destino del dron mediante kafka
     def recibir_destino(self, servidor_kafka, puerto_kafka):
         consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
 
@@ -100,6 +102,28 @@ class Dron:
                 mensaje = pickle.loads(msg.value)
                 self.mapa.cuadros = mensaje
                 break  # Sale del bucle al recibir un mensaje exitoso
+            
+    # *Notifica del estado del mapa a los drones
+    def enviar_tablero(self, servidor_kafka, puerto_kafka): # !KAFKA
+        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        
+        topic = "mapa_a_engine_topic"
+                      
+        time.sleep(0.3)
+        producer.send(topic, pickle.dumps(self.mapa))
+        producer.flush()
+        
+        # *Notifica los destinos a los drones y los pone en marcha
+    def notificar_posicion(self, servidor_kafka, puerto_kafka, pos_vieja): # !KAFKA
+        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        
+        topic = "posicion_a_engine_topic"
+           
+        cadena = str("Id: (" + self.id + ") vieja: (" + pos_vieja.x + "," + pos_vieja.y + ") " +
+                     "nueva: (" + self.posicion.x + "," + self.posicion.y + ")") 
+        time.sleep(0.3)
+        producer.send(topic, pickle.dumps(self.posicion))
+        producer.flush()
     
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
@@ -281,10 +305,15 @@ if (len(sys.argv) == 5):
     mensaje=""
     
     dron.recibir_destino("127.0.0.1", 9092)
-    dron.recibir_mapa("127.0.0.1", 9092)
-    dron.mapa.cuadros[1][1]=dron
-    print("mapa:" + str(dron.mapa.cuadros))
-    dron.mapa.cuadros[2][2]=dron
-    dron.mapa.mover_contenido((2,2),(20,20))
-    print("mapa:" + str(dron.mapa.cuadros))
-    print(dron.destino)
+
+    while(dron.color=="Rojo"):
+        mapa_actualizado=dron.recibir_mapa("127.0.0.1", 9092)
+        if(mapa_actualizado != dron.mapa):
+            dron.mapa = mapa_actualizado
+            pos_vieja=dron.coordenada
+            dron.mover(dron.destino)
+            dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+            
+            
+            
+        

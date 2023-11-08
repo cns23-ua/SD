@@ -15,8 +15,8 @@ class Tablero:
         enumeration_width = 40
 
         # Crear un lienzo (canvas) para el tablero con espacio adicional en la parte superior e izquierda
-        canvas_width = (filas * 30) + enumeration_width
-        canvas_height = (columnas * 30) + enumeration_width
+        canvas_width = (columnas * 30) + enumeration_width
+        canvas_height = (filas * 30) + enumeration_width
         self.canvas = tk.Canvas(root, width=canvas_width, height=canvas_height)
         self.canvas.pack()
 
@@ -24,7 +24,7 @@ class Tablero:
         for fila in range(filas):
             for columna in range(columnas):
                 x0 = columna * 30 + enumeration_width  # Añade espacio para enumeración en el margen izquierdo
-                y0 = fila * 30 + enumeration_width  # Añade espacio para enumeración en el margen superior
+                y0 = (filas - fila - 1) * 30 + enumeration_width  # Invierte el orden de las filas
                 x1 = x0 + 30
                 y1 = y0 + 30
                 cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill="white", outline="black")
@@ -41,12 +41,12 @@ class Tablero:
                 if fila == 0:
                     numero = columna + 1
                     x_text = (x0 + x1) / 2
-                    y_text = y0 - 15  # Coloca el número por encima del cuadro
+                    y_text = enumeration_width - 15  # Coloca el número encima del cuadro
                     self.canvas.create_text(x_text, y_text, text=str(numero), font=("Helvetica", 12))
 
     def dibujar_casilla(self, x, y, id, color):
-        x0 = x * 30 + 40  # Ajusta las coordenadas al tamaño de las casillas y el margen
-        y0 = (self.filas - y - 1) * 30 + 40  # Invierte las coordenadas en el eje y
+        x0 = x * 30 + 40
+        y0 = y * 30 + 40
         x1 = x0 + 30
         y1 = y0 + 30
         cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
@@ -54,16 +54,82 @@ class Tablero:
         x_text = (x0 + x1) / 2
         y_text = (y0 + y1) / 2
         self.canvas.create_text(x_text, y_text, text=str(id), font=("Helvetica", 12))
+        
+    def dibujar_casilla_sinId(self, x, y, color):
+        x0 = x * 30 + 40
+        y0 = y * 30 + 40
+        x1 = x0 + 30
+        y1 = y0 + 30
+        cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
+        self.cuadros.append(cuadro)
 
-    def mover_contenido(self, pos_origen, pos_destino):
-        cuadro = self.cuadros[pos_origen[0]-1][pos_origen[1]-1]
-        print("Cuadro: " + str(cuadro))
-        # Borra el contenido del cuadro de origen
-        self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = 0
+    def mover_contenido(self, id, pos_origen, pos_destino):
+        
+        # Borramos el contenido del cuadro de origen teniendo en cuenta
+        # todo, que tanto que en el cuadro anterior hubiera varios drones
+        # o ninguno
+        if (self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]==1 and 
+            id in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]):
+            color_movido = self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2][0]
+            self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = 0
+            #Pasamos el dron indicado de la posición anterior a la que queremos
+            self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,[color_movido]))
+        elif(self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]>1 and 
+            id in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]):
+            posicion=0
+            ids=[]
+            colores=[]
+            for identificador in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]:
+                if identificador != id:
+                    posicion = posicion+1
+                    break
+            for identificador in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]:
+                if identificador != id:
+                    ids.append(identificador)
+            
+            ignorado = 0
+            color_movido = self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2][posicion]
+            for color in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2]:
+                if ignorado != posicion:
+                    colores.append(color)
+                ignorado = ignorado+1
+                    
+            vieja = (ids, self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]-1,colores)
+            self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = vieja
 
-        # Copia el cuadro a la nueva posición
-        self.cuadros[pos_destino[0]-1][pos_destino[1]-1] = cuadro
+            #Pasamos el dron indicado de la posición anterior a la que queremos
+            self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,[color_movido]))
+            
+    def introducir_en_posicion(self, x, y, objeto):
+        x = x-1
+        y = y-1
+        elemento=self.cuadros[x][y]
+        
+        if(elemento==0):
+            self.cuadros[x][y]=objeto
+        else:
+            nueva = (elemento[0]+objeto[0], elemento[1]+1, elemento[2] + objeto[2])
+            self.cuadros[x][y] = nueva
 
+                    
+    def dibujar_tablero(self):
+        for fila in range(self.filas):
+            for columna in range(self.columnas):
+                contenido=self.cuadros[fila][columna]
+                if(contenido!=0):
+                    for color in contenido[2]:
+                        pintura="green"
+                        if(color=="Rojo"):
+                            pintura="red"
+                            break
+                    self.dibujar_casilla(fila, columna, contenido[0][len(contenido[0])-1], pintura)
+        self.root.mainloop()
+                
+    def estado_final(self, x, y):
+        x=x-1
+        y=y-1
+        tupla_nueva=(self.cuadros[x][y][0],self.cuadros[x][y][1],["Verde"])
+        self.cuadros[x][y]=tupla_nueva
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -71,7 +137,18 @@ if __name__ == "__main__":
     
     # Llama a la función dibujar_casilla con coordenadas x, y, ID y color   
   
-    tablero.dibujar_casilla(2, 2, 2, "green")
-    tablero.dibujar_casilla(3, 3, 3, "red")
+    tablero.cuadros[7][7]=([1],1,["Verde"])
+    tablero.cuadros[4][4]=([1,2,3],3,["Verde", "Rojo", "Verde"])
+    tablero.introducir_en_posicion(1,1,([1, 3],2,["Rojo", "Verde"]))
+    tablero.introducir_en_posicion(1,1,([4],1,["Verde"]))
+    tablero.introducir_en_posicion(20,20,([1, 3],2,["Rojo", "Verde"]))
+    tablero.introducir_en_posicion(19,19,([4],1,["Verde"]))
+    tablero.mover_contenido(2,(8,8),(10,10))
+    tablero.mover_contenido(2,(5,5),(12,16))
+    print(tablero.cuadros[4][4])
+    print(tablero.cuadros[11][15])
+    print(tablero.cuadros[9][9])
+    tablero.estado_final(1,1)
+        
+    tablero.dibujar_tablero()
     
-    root.mainloop()

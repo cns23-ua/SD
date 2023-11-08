@@ -1,4 +1,5 @@
 import socket
+import tkinter as tk
 import sys
 import math
 import time
@@ -12,6 +13,8 @@ import json
 from confluent_kafka import Producer
 import pickle
 from kafka import KafkaProducer
+from kafka import KafkaConsumer
+from json import loads
 
 HEADER = 64
 PORT = 5050
@@ -26,13 +29,14 @@ class AD_Engine:
         
     # *Constructor
     def __init__(self,puerto_escucha, n_maxDrones, ip_broker ,puerto_broker,ip_weather, puerto_weather):
-        self.mapa = Tablero(tk.Tk(),20,20).cuadros
+        self.mapa = Tablero(tk.Tk(),20,20)
         self.puerto_escucha = puerto_escucha
         self.n_maxDrones = n_maxDrones
         self.ip_broker = ip_broker
         self.puerto_broker = puerto_broker
         self.ip_weather = ip_weather
         self.puerto_weather = puerto_weather
+        self.figuras = ""
         self.drones = []
         
     # * Funcion que envia un mensaje al servidor
@@ -81,7 +85,7 @@ class AD_Engine:
         topic = "mapa_a_drones_topic"
                       
         time.sleep(0.3)
-        producer.send(topic, pickle.dumps(self.mapa))
+        producer.send(topic, pickle.dumps(self.mapa.cuadros))
         producer.flush()
         
         # *Notifica los destinos a los drones y los pone en marcha
@@ -103,6 +107,28 @@ class AD_Engine:
         time.sleep(0.3)
         producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
+        
+    # * Funcion que recibe el destino del dron mediante kafka
+    def recibir_posiciones(self, servidor_kafka, puerto_kafka):
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+
+        topic = "posicion_a_engine_topic"
+        
+        consumer.subscribe([topic])
+        
+        for msg in consumer:
+            if msg.value:
+                mensaje = loads(msg.value.decode('utf-8'))
+                self.destino = eval(mensaje)
+                break  # Sale del bucle al recibir un mensaje exitoso
+        
+        id = int(mensaje[6:7])
+        viejax = int(mensaje[18:19])
+        viejay = int(mensaje[20:21])
+        nuevax = int(mensaje[31:32])
+        nuevay = int(mensaje[33:34])
+        
+        return (id, (viejax, viejay), (nuevax, nuevay))
         
     # *Acaba con la acción
     def stop(self):
@@ -133,7 +159,7 @@ class AD_Engine:
             figuras[nombre_figura] = figura_actual
             figura_actual = {}
             # *? Ejemplo de figuras ("Pollito" : [5 : {2,3} , 6 : {5,6} .... ], "Corazón" : [....] , ....)
-        return figuras
+        self.figuras = figuras
         
     # *Autentica si el dron está registrado
     def autenticar_dron(self, conn):
@@ -160,19 +186,35 @@ class AD_Engine:
                 if "token" in valor and valor["token"] == token:
                     message_to_send = "Dron verificado"
                     self.enviar_mensaje(conn, message_to_send)
-                    return False
+                    self.drones.append(int(id))
+                    return True
             else:
                 message_to_send = "Rechazado"
                 self.enviar_mensaje(conn, message_to_send)
                 return False
+            
+    def dibujar_tablero_engine(self):
+        root = tk.Tk()
+        tablero = Tablero(root, 20, 20)
+        tablero.cuadros=self.mapa.cuadros
+        tablero.dibujar_tablero()
         
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         connected = True
         while connected:
             self.autenticar_dron(conn)
-            self.notificar_destinos(figuras, 2, "127.0.0.1", 9092)
-            self.enviar_tablero("127.0.0.1", 9092)
+            self.notificar_destinos(self.figuras, 2, "127.0.0.1", 9092)
+            self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,["Rojo"]))
+            self.dibujar_tablero_engine()
+            cont = 0
+            while cont<100:
+                self.enviar_tablero("127.0.0.1", 9092)
+                tupla=self.recibir_posiciones("127.0.0.1", 9092) #necesitamos arreglar el formato de las posiciones
+                print(tupla)
+                self.mapa.mover_contenido(tupla[0],tupla[1],tupla[2])
+                self.dibujar_tablero_engine()
+                cont=cont+1
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
 
@@ -199,8 +241,6 @@ class AD_Engine:
 
 ######################### MAIN ##########################
 
-
-
 if (len(sys.argv) == 8):
     fichero=""
     puerto_escucha = int(sys.argv[1])
@@ -224,7 +264,8 @@ if (len(sys.argv) == 8):
 if (len(sys.argv) == 2):
     engine = AD_Engine("","","","","","")
     fichero = sys.argv[1]
-    figuras = engine.procesar_fichero(fichero)
+    engine.procesar_fichero(fichero)
+    print(engine.figuras)
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ADDR = (SERVER, PORT) 
     server.bind(ADDR)
