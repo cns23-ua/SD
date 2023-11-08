@@ -130,6 +130,23 @@ class AD_Engine:
         nuevay = int(separado[4])
         print(f"({id}, {viejax}, {viejay}, ({nuevax}, {nuevay}))")
         return (id, (viejax, viejay), (nuevax, nuevay))
+    
+    def recibir_acabado(self, servidor_kafka, puerto_kafka):
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+
+        topic = "acabado_a_engine_topic"
+        
+        consumer.subscribe([topic])
+        print("estoy en ello")
+        for msg in consumer:
+            if msg.value:
+                mensaje = loads(msg.value.decode('utf-8'))
+                break  # Sale del bucle al recibir un mensaje exitoso
+            
+        id = int(mensaje.split(" ")[0])
+        acabado = mensaje.split(" ")[1]
+            
+        return (id, acabado)
         
     # *Acaba con la acción
     def stop(self):
@@ -215,8 +232,12 @@ class AD_Engine:
                 print(tupla)
                 self.mapa.mover_contenido(tupla[0],tupla[1],tupla[2])
                 self.dibujar_tablero_engine()
+                acabado = self.recibir_acabado("127.0.0.1", 9092)
+                print("Hola", acabado)
+                #if(self.recibir_acabado("127.0.0.1", 9092)[1]=="s"):
+                #    print("entro")
+                #    self.mapa.estado_final(tupla[2])
                 cont=cont+1
-                print(cont)
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
 

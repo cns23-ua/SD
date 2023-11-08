@@ -131,6 +131,20 @@ class Dron:
         producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
     
+    def enviar_acabado(self, servidor_kafka, puerto_kafka): # !KAFKA
+        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        
+        topic = "acabado_a_engine_topic"
+           
+        acabado = "n"
+        if self.color=="Verde":
+            acabado = "s"
+        cadena = f"{self.id} {acabado}"
+        print("acabado",cadena)
+        time.sleep(0.3)
+        producer.send(topic, dumps(cadena).encode('utf-8'))
+        producer.flush()
+    
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
         message = msg.encode(FORMAT)
@@ -319,15 +333,15 @@ if (len(sys.argv) == 5):
     dron.recibir_destino("127.0.0.1", 9092)
 
     while(dron.color=="Rojo"):
-        
         mapa_actualizado_cuadros = dron.recibir_mapa("127.0.0.1", 9092)
         #dron.dibujar_tablero_dron()
         if(mapa_actualizado_cuadros != dron.mapa.cuadros):
             dron.mapa.cuadros = mapa_actualizado_cuadros
             pos_vieja=dron.coordenada
             dron.mover(dron.destino)
-            time.sleep(0.5)
+            dron.enviar_acabado("127.0.0.1", 9092)
             dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+            print("Aquí llego")
             
             
             
