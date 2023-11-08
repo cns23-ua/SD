@@ -109,8 +109,9 @@ class AD_Engine:
         producer.flush()
         
     # * Funcion que recibe el destino del dron mediante kafka
-    def recibir_posiciones(self, servidor_kafka, puerto_kafka):
-        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+    def recibir_posiciones(self, servidor_kafka, puerto_kafka, figura):
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka),
+                                 consumer_timeout_ms=1000)
 
         topic = "posicion_a_engine_topic"
         
@@ -120,33 +121,24 @@ class AD_Engine:
             if msg.value:
                 mensaje = loads(msg.value.decode('utf-8'))
                 
-                break  # Sale del bucle al recibir un mensaje exitoso
-        
-        separado = mensaje.split(',')
-        id = int(separado[0])
-        viejax = int(separado[1])
-        viejay = int(separado[2])
-        nuevax = int(separado[3])
-        nuevay = int(separado[4])
-        print(f"({id}, {viejax}, {viejay}, ({nuevax}, {nuevay}))")
-        return (id, (viejax, viejay), (nuevax, nuevay))
-    
-    def recibir_acabado(self, servidor_kafka, puerto_kafka):
-        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
-
-        topic = "acabado_a_engine_topic"
-        
-        consumer.subscribe([topic])
-        print("estoy en ello")
-        for msg in consumer:
-            if msg.value:
-                mensaje = loads(msg.value.decode('utf-8'))
-                break  # Sale del bucle al recibir un mensaje exitoso
-            
-        id = int(mensaje.split(" ")[0])
-        acabado = mensaje.split(" ")[1]
-            
-        return (id, acabado)
+                separado = mensaje.split(',')
+                id = int(separado[0])
+                viejax = int(separado[1])
+                viejay = int(separado[2])
+                nuevax = int(separado[3])
+                nuevay = int(separado[4])  
+                cont=1
+                for clave in self.figuras:
+                    if cont == figura:
+                        drones_figura = self.figuras[clave]
+                        break
+                    cont=cont+1
+                finalx=int(drones_figura[id].split(",")[0])
+                finaly=int(drones_figura[id].split(",")[1])
+                self.mapa.mover_contenido(id,(viejax,viejay),(nuevax,nuevay))
+                if(finalx==nuevax and finaly==nuevay):
+                    self.mapa.estado_final(nuevax, nuevay)
+                
         
     # *Acaba con la acción
     def stop(self):
@@ -225,19 +217,13 @@ class AD_Engine:
             self.notificar_destinos(self.figuras, 2, "127.0.0.1", 9092)
             self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,["Rojo"]))
             self.dibujar_tablero_engine()
-            cont = 0
-            while cont<100:
+            figura = 2
+            contador = 0
+            while contador<100:
                 self.enviar_tablero("127.0.0.1", 9092)
-                tupla=self.recibir_posiciones("127.0.0.1", 9092) #necesitamos arreglar el formato de las posiciones
-                print(tupla)
-                self.mapa.mover_contenido(tupla[0],tupla[1],tupla[2])
+                self.recibir_posiciones("127.0.0.1", 9092, figura) 
                 self.dibujar_tablero_engine()
-                acabado = self.recibir_acabado("127.0.0.1", 9092)
-                print("Hola", acabado)
-                #if(self.recibir_acabado("127.0.0.1", 9092)[1]=="s"):
-                #    print("entro")
-                #    self.mapa.estado_final(tupla[2])
-                cont=cont+1
+                contador=contador+1
         print("ADIOS. TE ESPERO EN OTRA OCASION")
         conn.close()
 
