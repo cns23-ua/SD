@@ -24,10 +24,10 @@ class Dron:
     # *Constructor
     def __init__(self):
         self.id = 1
-        self.alias = "prueba"
-        self.color = "Rojo"
+        self.alias = ""
+        self.color = ""
         self.coordenada = Coordenada(1,1)
-        self.token = "prueba"
+        self.token = ""
         self.destino = ""
         self.mapa = Tablero(tk.Tk(),20,20)
         
@@ -291,10 +291,21 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
-            cliente_eng = dron.conectar_verify_engine(SERVER_eng,PORT_eng)
+            self.conectar_verify_engine(SERVER_eng, PORT_eng)
+            
+            self.recibir_destino("127.0.0.1", 9092)
+
+            while(self.color=="Rojo"):
+                mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                #dron.dibujar_tablero_dron()
+                if(mapa_actualizado_cuadros != self.mapa.cuadros):
+                    self.mapa.cuadros = mapa_actualizado_cuadros
+                    pos_vieja=self.coordenada
+                    self.mover(self.destino)
+                    self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
 
         if(opc!=5):
-            dron.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
+            self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
             
     def dibujar_tablero_dron(self):
         root = tk.Tk()
@@ -308,24 +319,12 @@ if (len(sys.argv) == 5):
     PORT = int(sys.argv[2])
     ADDR = (SERVER, PORT)   
     dron = Dron()
-    #cliente_reg = dron.conectar_registri(SERVER,PORT)
+    cliente_reg = dron.conectar_registri(SERVER,PORT)
     SERVER_eng = sys.argv[3]
     PORT_eng = int(sys.argv[4])
     ADDR_eng = (SERVER, PORT)
-    #dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
-    dron.conectar_verify_engine(SERVER_eng, PORT_eng)
-    mensaje=""
+    dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
     
-    dron.recibir_destino("127.0.0.1", 9092)
-
-    while(dron.color=="Rojo"):
-        mapa_actualizado_cuadros = dron.recibir_mapa("127.0.0.1", 9092)
-        #dron.dibujar_tablero_dron()
-        if(mapa_actualizado_cuadros != dron.mapa.cuadros):
-            dron.mapa.cuadros = mapa_actualizado_cuadros
-            pos_vieja=dron.coordenada
-            dron.mover(dron.destino)
-            dron.notificar_posicion("127.0.0.1", 9092, pos_vieja)
             
             
             

@@ -16,11 +16,9 @@ from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from json import loads
 
-HEADER = 64
-PORT = 5050
+HEADER = 64 
 FORMAT = 'utf-8'
 FIN = "FIN"
-MAX_CONEXIONES = 8
 JSON_FILE = "BD.json"
 SERVER = "127.0.0.2"
 
@@ -111,7 +109,7 @@ class AD_Engine:
     # * Funcion que recibe el destino del dron mediante kafka
     def recibir_posiciones(self, servidor_kafka, puerto_kafka, figura):
         consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka),
-                                 consumer_timeout_ms=1000)
+                                 consumer_timeout_ms=500)
 
         topic = "posicion_a_engine_topic"
         
@@ -156,7 +154,6 @@ class AD_Engine:
             nombre_figura = figura['Nombre'] 
             drones = figura['Drones']
                        
-            print(f"Nombre de la figura: {nombre_figura}")
             
             for drone in drones:
                 id_drone = (drone['ID'])
@@ -214,14 +211,14 @@ class AD_Engine:
         connected = True
         while connected:
             self.autenticar_dron(conn)
-            self.notificar_destinos(self.figuras, 2, "127.0.0.1", 9092)
+            self.notificar_destinos(self.figuras, 2, self.ip_broker, 9092)
             self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,["Rojo"]))
             self.dibujar_tablero_engine()
             figura = 2
             contador = 0
             while contador<100:
-                self.enviar_tablero("127.0.0.1", 9092)
-                self.recibir_posiciones("127.0.0.1", 9092, figura) 
+                self.enviar_tablero(self.ip_broker, self.puerto_broker)
+                self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura) 
                 self.dibujar_tablero_engine()
                 contador=contador+1
         print("ADIOS. TE ESPERO EN OTRA OCASION")
@@ -250,22 +247,24 @@ class AD_Engine:
 
 ######################### MAIN ##########################
 
-if (len(sys.argv) == 8):
-    fichero=""
+if (len(sys.argv) == 7):
+    fichero="AwD_figuras.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
     puerto_broker = int(sys.argv[4])
     ip_weather= sys.argv[5]
     puerto_weather = int(sys.argv[6])
-    ip_weather= sys.argv[7]
+    
     
     ADDR = (SERVER, puerto_escucha) 
     print("[STARTING] Servidor inicializándose...")
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(ADDR)
+    MAX_CONEXIONES = max_drones
     print("[STARTING] Servidor inicializándose...")  
-    engine = AD_Engine(puerto_escucha,max_drones, ip_broker ,puerto_broker,ip_weather, puerto_weather)
+    engine = AD_Engine(puerto_escucha, max_drones, ip_broker , puerto_broker, ip_weather, puerto_weather)
+    engine.procesar_fichero(fichero)
     if fichero != "":   
         engine.start()
         
@@ -274,7 +273,6 @@ if (len(sys.argv) == 2):
     engine = AD_Engine("","","","","","")
     fichero = sys.argv[1]
     engine.procesar_fichero(fichero)
-    print(engine.figuras)
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     ADDR = (SERVER, PORT) 
     server.bind(ADDR)

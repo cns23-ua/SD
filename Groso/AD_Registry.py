@@ -12,7 +12,7 @@ FORMAT = 'utf-8'
 FIN = "FIN"
 MAX_CONEXIONES = 8
 JSON_FILE = "BD.json"
-SERVER = "127.0.0.1"
+SERVER = "127.0.0.3"
 ADDR = (SERVER, PORT)
 
 def send_message(msg , cliente):
@@ -94,11 +94,17 @@ def handle_client(conn, addr):
                 except FileNotFoundError:
                     data = {}
 
-                # Encuentra el ID más alto en el JSON
-                max_id = max(data.values(), key=lambda x: x["id"])["id"]
 
-                # Calcula el nuevo ID sumando 1 al ID más alto
-                id = max_id + 1
+                if data is None:
+                    id = 1
+                    print("vaciooooo")
+                else:
+                # Encuentra el ID más alto en el JSON
+                    print("vac1111111111iooooo")
+                    max_id = max(data.values(), key=lambda x: x["id"])["id"]
+
+                    # Calcula el nuevo ID sumando 1 al ID más alto
+                    id = max_id + 1
 
                 token = generate_random_token(64)
                 save_drone_info(alias , id , token)

@@ -111,7 +111,10 @@ class Tablero:
             nueva = (elemento[0]+objeto[0], elemento[1]+1, elemento[2] + objeto[2])
             self.cuadros[x][y] = nueva
 
-                    
+             
+    def cerrar_ventana(self):
+        self.root.destroy() 
+        
     def dibujar_tablero(self):
         for fila in range(self.filas):
             for columna in range(self.columnas):
@@ -123,6 +126,7 @@ class Tablero:
                             pintura="red"
                             break
                     self.dibujar_casilla(fila, columna, contenido[0][len(contenido[0])-1], pintura)
+        self.root.after(1000,self.cerrar_ventana)
         self.root.mainloop()
                 
     def estado_final(self, x, y):
