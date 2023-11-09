@@ -95,12 +95,12 @@ def handle_client(conn, addr):
                     data = {}
 
 
-                if data is None:
+                if not data :
                     id = 1
-                    print("vaciooooo")
+                    
                 else:
                 # Encuentra el ID más alto en el JSON
-                    print("vac1111111111iooooo")
+                    
                     max_id = max(data.values(), key=lambda x: x["id"])["id"]
 
                     # Calcula el nuevo ID sumando 1 al ID más alto
