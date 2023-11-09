@@ -25,7 +25,7 @@ class Dron:
     def __init__(self):
         self.id = 1
         self.alias = ""
-        self.color = ""
+        self.color = "Rojo"
         self.coordenada = Coordenada(1,1)
         self.token = ""
         self.destino = ""
@@ -88,7 +88,9 @@ class Dron:
         for msg in consumer:
             if msg.value:
                 mensaje = loads(msg.value.decode('utf-8'))
+               
                 self.destino = eval(mensaje)[self.id]
+                print("el destino es:" , self.destino)
                 x = int(self.destino.split(",")[0])
                 y = int(self.destino.split(",")[1])
                 self.destino = Coordenada(x,y)
@@ -153,11 +155,13 @@ class Dron:
             #Una vez establecida la conexión
             message = f"{self.alias} {self.id} {self.token}"      
             self.enviar_mensaje(client , message)
+            
+          
             orden = ""
             #me espero  que me den la orden o ser rechazado
             while  orden == "":
                 orden = self.receive_message(client)
-                print( "orden" + orden)
+                print("esta es la orden:" , orden)
                 orden_preparada=orden.split(" ")
             if orden=="Rechazado":
                 print("Conexion rechazada por el engine")
@@ -214,22 +218,20 @@ class Dron:
                 self.enviar_mensaje(cliente, message)
                 #Hemos enviado los datos y esperamos respuesta con nuestro token 
                 token =""              
-                while (token==""):
-                    print("Estamos dentro")
-                    msg_length = cliente.recv(HEADER).decode(FORMAT)
-                    if msg_length:
-                        msg_length = int(msg_length)
-                        token = cliente.recv(msg_length).decode(FORMAT)
-                    #token = self.receive_message(cliente)
-                print("Esta es la token" + token)    
+                msg_length = cliente.recv(HEADER).decode(FORMAT)
+                if msg_length:
+                    msg_length = int(msg_length)
+                    token = cliente.recv(msg_length).decode(FORMAT)
+                
+                    #token = self.receive_message(cliente)   
                                                
                 token_manejable=token.split(" ")
                 #si nuestro token empieza con tkn hemos podido registrarnos, si no no y volvemos a introducir datos
-            
+
                 self.alias=token_manejable[0]
-                self.id=token_manejable[1]
+                self.id=int(token_manejable[1])
                 self.token=token_manejable[2]
-                print("Ya tengo mi token y estoy dado de alta")
+
                 
                 
                 
@@ -297,7 +299,6 @@ class Dron:
 
             while(self.color=="Rojo"):
                 mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
-                #dron.dibujar_tablero_dron()
                 if(mapa_actualizado_cuadros != self.mapa.cuadros):
                     self.mapa.cuadros = mapa_actualizado_cuadros
                     pos_vieja=self.coordenada

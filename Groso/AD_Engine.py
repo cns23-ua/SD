@@ -21,6 +21,8 @@ FORMAT = 'utf-8'
 FIN = "FIN"
 JSON_FILE = "BD.json"
 SERVER = "127.0.0.2"
+CONEX_ACTIVAS = 0
+
 
 
 class AD_Engine:
@@ -109,7 +111,7 @@ class AD_Engine:
     # * Funcion que recibe el destino del dron mediante kafka
     def recibir_posiciones(self, servidor_kafka, puerto_kafka, figura):
         consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka),
-                                 consumer_timeout_ms=500)
+                                 consumer_timeout_ms=3000)
 
         topic = "posicion_a_engine_topic"
         
@@ -126,6 +128,9 @@ class AD_Engine:
                 nuevax = int(separado[3])
                 nuevay = int(separado[4])  
                 cont=1
+                
+                print("pos nueva ", viejax , viejay)
+                
                 for clave in self.figuras:
                     if cont == figura:
                         drones_figura = self.figuras[clave]
@@ -208,12 +213,14 @@ class AD_Engine:
         
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
-        connected = True
-        while connected:
-            self.autenticar_dron(conn)
+        global CONEX_ACTIVAS
+        CONEX_ACTIVAS = CONEX_ACTIVAS + 1
+        self.autenticar_dron(conn)
+        self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,["Rojo"]))
+        if CONEX_ACTIVAS == 6:
             self.notificar_destinos(self.figuras, 2, self.ip_broker, 9092)
-            self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,["Rojo"]))
-            self.dibujar_tablero_engine()
+            
+    
             figura = 2
             contador = 0
             while contador<100:
@@ -221,8 +228,8 @@ class AD_Engine:
                 self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura) 
                 self.dibujar_tablero_engine()
                 contador=contador+1
-        print("ADIOS. TE ESPERO EN OTRA OCASION")
-        conn.close()
+                
+        #conn.close()
 
 
     def start(self):
@@ -232,10 +239,11 @@ class AD_Engine:
         print(CONEX_ACTIVAS)
         while True:
             conn, addr = server.accept()
-            CONEX_ACTIVAS = threading.active_count()
             if (CONEX_ACTIVAS <= MAX_CONEXIONES): 
                 thread = threading.Thread(target= self.handle_client, args=(conn, addr))
                 thread.start()
+                               
+                
                 print(f"[CONEXIONES ACTIVAS] {CONEX_ACTIVAS}")     
                 print("CONEXIONES RESTANTES PARA CERRAR EL SERVICIO", MAX_CONEXIONES-CONEX_ACTIVAS)
             else:

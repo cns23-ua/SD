@@ -138,24 +138,7 @@ class Tablero:
         print(tupla_nueva)
         self.cuadros[x][y]=tupla_nueva
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    tablero = Tablero(root, 20, 20)
+
     
-    # Llama a la función dibujar_casilla con coordenadas x, y, ID y color   
-  
-    tablero.cuadros[7][7]=([1],1,["Verde"])
-    tablero.cuadros[4][4]=([1,2,3],3,["Verde", "Rojo", "Verde"])
-    tablero.introducir_en_posicion(1,1,([1, 3],2,["Rojo", "Verde"]))
-    tablero.introducir_en_posicion(1,1,([4],1,["Verde"]))
-    tablero.introducir_en_posicion(20,20,([1, 3],2,["Rojo", "Verde"]))
-    tablero.introducir_en_posicion(19,19,([4],1,["Verde"]))
-    tablero.mover_contenido(2,(8,8),(10,10))
-    tablero.mover_contenido(2,(5,5),(12,16))
-    print(tablero.cuadros[4][4])
-    print(tablero.cuadros[11][15])
-    print(tablero.cuadros[9][9])
-    tablero.estado_final(1,1)
-        
-    tablero.dibujar_tablero()
+   
     
