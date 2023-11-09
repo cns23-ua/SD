@@ -90,7 +90,7 @@ class Dron:
                 mensaje = loads(msg.value.decode('utf-8'))
                
                 self.destino = eval(mensaje)[self.id]
-                print("el destino es:" , self.destino)
+                
                 x = int(self.destino.split(",")[0])
                 y = int(self.destino.split(",")[1])
                 self.destino = Coordenada(x,y)
@@ -203,7 +203,7 @@ class Dron:
             print("[3] Dar de baja")
             print("[4] Añadir al espectaculo")
             print("[5] Desconectar")
-            opc=int(input())
+            opc=int(sys.stdin.readline())
             if(opc<1 or opc>5):
                 print("Opción no válida, inténtelo de nuevo")
                 
@@ -212,7 +212,7 @@ class Dron:
         if (opc==1):
                 alias = ""
                 print("\nIntroduce mi alias")
-                alias = input()
+                alias = sys.stdin.readline()
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"
                 self.enviar_mensaje(cliente, message)
@@ -238,7 +238,7 @@ class Dron:
         elif (opc==2):
                       
                 print("Dime el Alias del dron que quieres modificar")
-                alias = input()
+                alias = sys.stdin.readline()()
                 
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"      
@@ -252,7 +252,7 @@ class Dron:
                 
                 if message != "No existe":              
                     print(message) 
-                    alias = input()
+                    alias = sys.stdin.readline()()
                                             
                     message_bytes = alias.encode(FORMAT)
                     message_length = len(message_bytes)
@@ -272,7 +272,7 @@ class Dron:
                        
         elif (opc==3):
             print("Introduce el alias del dron que quieres eliminar")
-            alias = input()
+            alias = sys.stdin.readline()()
             #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
             message = f"{opc} {alias}"
             self.enviar_mensaje(cliente, message)
