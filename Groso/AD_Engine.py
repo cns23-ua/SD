@@ -109,15 +109,24 @@ class AD_Engine:
                     cont=cont+1
                 finalx=int(drones_figura[id].split(",")[0])
                 finaly=int(drones_figura[id].split(",")[1])
-                self.mapa.mover_contenido(id,(viejax,viejay),(nuevax,nuevay))
+                
+                color = "red"
                 if(finalx==nuevax and finaly==nuevay):
-                    self.mapa.estado_final(nuevax, nuevay)
+                    color = "green"
+                
+                self.mapa.mover_contenido(id,(viejax,viejay),(nuevax,nuevay), color)
+                
+                
                     
                 
         
     # *Acaba con la acción
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
+        
+        
+    
+        
             
     # *Función que comunica con el servidor(engine) y hace lo que le mande
     def contactar_weather(self, ip_weather, port_weather):              
@@ -208,23 +217,30 @@ class AD_Engine:
         
         
     def acabada_figura(self, n_fig):
+    # Busca la figura correspondiente al número proporcionado (n_fig)
         cont = 1
         for clave in self.figuras:
             if cont == n_fig:
                 figura = self.figuras[clave]
                 break
-            cont=cont+1
+            cont = cont + 1
 
+        # Verifica cada posición de la figura en el mapa
         for clave in figura:
-            x=int(figura[clave].split(",")[0])-1
-            y=int(figura[clave].split(",")[1])-1
-            if(self.mapa.cuadros[x][y]!=0):
-                if (clave == self.mapa.cuadros[x][y][0][0]):
-                    return True
-                else:
-                    return False
+            x = int(figura[clave].split(",")[0]) - 1
+            y = int(figura[clave].split(",")[1]) - 1
+
+            
+            if self.mapa.cuadros[x][y] != 0:
+               
+                if clave != self.mapa.cuadros[x][y][0][0]:
+                    return False  
             else:
-                return False
+                return False  
+
+       
+        return True  
+
                 
         
     def handle_client(self, conn, addr):
@@ -232,10 +248,10 @@ class AD_Engine:
         global CONEX_ACTIVAS
         CONEX_ACTIVAS = CONEX_ACTIVAS + 1
         self.autenticar_dron(conn)
-        self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,["Rojo"]))
-        print("???")
-        if CONEX_ACTIVAS == 2:
-            print("me acabo de meter")
+        self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
+        
+        if CONEX_ACTIVAS == 4:
+            
             self.notificar_destinos(self.figuras, 2, self.ip_broker, 9092)
             self.dibujar_tablero_engine()
     
@@ -243,15 +259,29 @@ class AD_Engine:
             contador = 0
             salimos = False
             while (salimos==False):
-                
-                self.enviar_tablero(self.ip_broker, self.puerto_broker)
-                self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura) 
-                self.dibujar_tablero_engine()
+                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura)              
+                self.dibujar_tablero_engine()               
                 salimos = self.acabada_figura(figura)
-                contador=contador+1
                 
                 
-        print("hasta luego g")
+                
+            self.notificar_destinos(self.figuras, 2, self.ip_broker, 9092)
+            self.dibujar_tablero_engine()
+    
+            figura = 2
+            contador = 0
+            salimos = False
+            while (salimos==False):
+                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura)              
+                self.dibujar_tablero_engine()               
+                salimos = self.acabada_figura(figura)
+                
+
+                
+                
+      
         #conn.close()
 
 

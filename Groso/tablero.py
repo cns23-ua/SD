@@ -3,6 +3,7 @@ import math
 from coordenada import *  # Asegúrate de importar la clase Coordenada desde el archivo adecuado
 from collections import deque
 import pdb
+import time
 
 class Tablero:
     def __init__(self, root, filas, columnas):
@@ -63,42 +64,28 @@ class Tablero:
         cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
         self.cuadros.append(cuadro)
 
-    def mover_contenido(self, id, pos_origen, pos_destino):
+    def mover_contenido(self, id, pos_origen, pos_destino, color):
         
         # Borramos el contenido del cuadro de origen teniendo en cuenta
         # todo, que tanto que en el cuadro anterior hubiera varios drones
         # o ninguno
         if (self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]==1 and 
             id in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]):
-            color_movido = self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2][0]
             self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = 0
             #Pasamos el dron indicado de la posición anterior a la que queremos
-            self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,[color_movido]))
+            self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,color))
         elif(self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]>1 and 
             id in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]):
-            posicion=0
             ids=[]
-            colores=[]
-            for identificador in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]:
-                if identificador != id:
-                    posicion = posicion+1
-                    break
             for identificador in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][0]:
                 if identificador != id:
                     ids.append(identificador)
-            
-            ignorado = 0
-            color_movido = self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2][posicion]
-            for color in self.cuadros[pos_origen[0]-1][pos_origen[1]-1][2]:
-                if ignorado != posicion:
-                    colores.append(color)
-                ignorado = ignorado+1
                     
-            vieja = (ids, self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]-1,colores)
+            vieja = (ids, self.cuadros[pos_origen[0]-1][pos_origen[1]-1][1]-1, color)
             self.cuadros[pos_origen[0]-1][pos_origen[1]-1] = vieja
 
             #Pasamos el dron indicado de la posición anterior a la que queremos
-            self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,[color_movido]))
+            self.introducir_en_posicion(pos_destino[0], pos_destino[1], ([id],1,color))
             
     def introducir_en_posicion(self, x, y, objeto):
         x = x-1
@@ -108,7 +95,7 @@ class Tablero:
         if(elemento==0):
             self.cuadros[x][y]=objeto
         else:
-            nueva = (elemento[0]+objeto[0], elemento[1]+1, elemento[2] + objeto[2])
+            nueva = (elemento[0]+objeto[0], elemento[1]+1, objeto[2])
             self.cuadros[x][y] = nueva
 
              
@@ -119,21 +106,18 @@ class Tablero:
         for fila in range(self.filas):
             for columna in range(self.columnas):
                 contenido=self.cuadros[fila][columna]
-                if(contenido!=0):
-                    for color in contenido[2]:
-                        pintura="green"
-                        if(color=="Rojo"):
-                            pintura="red"
-                            break
-                    self.dibujar_casilla(fila, columna, contenido[0][len(contenido[0])-1], pintura)
+                if(contenido!=0):                    
+                    self.dibujar_casilla(fila, columna, contenido[0][len(contenido[0])-1], contenido[2])
         self.root.after(1000,self.cerrar_ventana)
         self.root.mainloop()
                 
     def estado_final(self, x, y):
         x=x-1
         y=y-1
-        tupla_nueva=(self.cuadros[x][y][0],self.cuadros[x][y][1],["Verde"])
+        tupla_nueva=(self.cuadros[x][y][0],self.cuadros[x][y][1],"Verde")
         self.cuadros[x][y]=tupla_nueva
+        
+    
 
 
     
