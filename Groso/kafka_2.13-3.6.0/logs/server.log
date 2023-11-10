@@ -1,0 +1,7 @@
+[2023-11-09 21:09:55,265] INFO Creating topic volver_a_casa with configuration {} and initial partition assignment HashMap(0 -> ArrayBuffer(0)) (kafka.zk.AdminZkClient)
+[2023-11-09 21:09:55,373] INFO [Controller id=0, targetBrokerId=0] Node 0 disconnected. (org.apache.kafka.clients.NetworkClient)
+[2023-11-09 21:09:55,387] INFO [ReplicaFetcherManager on broker 0] Removed fetcher for partitions Set(volver_a_casa-0) (kafka.server.ReplicaFetcherManager)
+[2023-11-09 21:09:55,391] INFO [LogLoader partition=volver_a_casa-0, dir=/tmp/kafka-logs] Loading producer state till offset 0 with message format version 2 (kafka.log.UnifiedLog$)
+[2023-11-09 21:09:55,392] INFO Created log for partition volver_a_casa-0 in /tmp/kafka-logs/volver_a_casa-0 with properties {} (kafka.log.LogManager)
+[2023-11-09 21:09:55,392] INFO [Partition volver_a_casa-0 broker=0] No checkpointed highwatermark is found for partition volver_a_casa-0 (kafka.cluster.Partition)
+[2023-11-09 21:09:55,392] INFO [Partition volver_a_casa-0 broker=0] Log loaded for partition volver_a_casa-0 with initial high watermark 0 (kafka.cluster.Partition)
