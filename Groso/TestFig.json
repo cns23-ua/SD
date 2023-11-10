@@ -40,11 +40,11 @@
             "Nombre": "Cuadrado",
             "Drones":[{
                 "ID":1,
-                "POS":"2,3"
+                "POS":"5,5"
                 },
                 {
                 "ID":2,
-                "POS":"4,1"
+                "POS":"3,3"
                 }
                 
             ]

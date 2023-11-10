@@ -101,7 +101,6 @@ class AD_Engine:
                 nuevay = int(separado[4])  
                 cont=1
                 
-                print("pos nueva ", viejax , viejay)
                 
                 for clave in self.figuras:
                     if cont == figura:
@@ -219,7 +218,6 @@ class AD_Engine:
         for clave in figura:
             x=int(figura[clave].split(",")[0])-1
             y=int(figura[clave].split(",")[1])-1
-            print ("coomparación: ", clave, self.mapa.cuadros[x][y])
             if(self.mapa.cuadros[x][y]!=0):
                 if (clave == self.mapa.cuadros[x][y][0][0]):
                     return True
@@ -235,7 +233,9 @@ class AD_Engine:
         CONEX_ACTIVAS = CONEX_ACTIVAS + 1
         self.autenticar_dron(conn)
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,["Rojo"]))
+        print("???")
         if CONEX_ACTIVAS == 2:
+            print("me acabo de meter")
             self.notificar_destinos(self.figuras, 2, self.ip_broker, 9092)
             self.dibujar_tablero_engine()
     
@@ -243,12 +243,15 @@ class AD_Engine:
             contador = 0
             salimos = False
             while (salimos==False):
+                
                 self.enviar_tablero(self.ip_broker, self.puerto_broker)
                 self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura) 
                 self.dibujar_tablero_engine()
                 salimos = self.acabada_figura(figura)
                 contador=contador+1
                 
+                
+        print("hasta luego g")
         #conn.close()
 
 
@@ -293,9 +296,9 @@ if (len(sys.argv) == 7):
     print("[STARTING] Servidor inicializándose...")  
     engine = AD_Engine(puerto_escucha, max_drones, ip_broker , puerto_broker, ip_weather, puerto_weather)
     engine.procesar_fichero(fichero)
-    print("weather " + str(engine.contactar_weather("127.0.0.5", 5054)))
-    #if fichero != "":   
-    #    engine.start()
+    print("weather " + str(engine.contactar_weather(ip_weather, puerto_weather)))
+    if fichero != "":   
+        engine.start()
         
 
 if (len(sys.argv) == 2):
