@@ -7,8 +7,8 @@ import json
 import time
 import secrets
 from json import dumps
+import tkinter as tk
 import string
-from confluent_kafka import Consumer, KafkaError
 from kafka import KafkaProducer
 from tablero import *
 import pickle
@@ -95,24 +95,6 @@ class Dron:
                 y = int(self.destino.split(",")[1])
                 self.destino = Coordenada(x,y)
                 break  # Sale del bucle al recibir un mensaje exitoso
-            
-    def recibir_vuelta(self, servidor_kafka, puerto_kafka):
-        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
-
-        topic = "volver_a_casa"
-        
-        consumer.subscribe([topic])
-        
-        for msg in consumer:
-            if msg.value:
-                mensaje = loads(msg.value.decode('utf-8'))
-               
-                self.destino = eval(mensaje)[self.id]
-                
-                x = int(self.destino.split(",")[0])
-                y = int(self.destino.split(",")[1])
-                self.destino = Coordenada(x,y)
-                break  # Sale del bucle al recibir un mensaje exitoso
 
     # * Función para recibir el mapa
     def recibir_mapa(self, servidor_kafka, puerto_kafka):
@@ -144,17 +126,6 @@ class Dron:
         producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
         
         topic = "posicion_a_engine_topic"
-           
-        #cadena = f"Id: ({self.id}) vieja: ({pos_vieja.x},{pos_vieja.y}) nueva: ({self.coordenada.x },{self.coordenada.y})" 
-        cadena = f"{self.id},{pos_vieja.x},{pos_vieja.y},{self.coordenada.x },{self.coordenada.y}"
-        time.sleep(0.3)
-        producer.send(topic, dumps(cadena).encode('utf-8'))
-        producer.flush()
-        
-    def notificar_posicion_casa(self, servidor_kafka, puerto_kafka, pos_vieja): # !KAFKA
-        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
-        
-        topic = "posicion_a_engine_topic_casa"
            
         #cadena = f"Id: ({self.id}) vieja: ({pos_vieja.x},{pos_vieja.y}) nueva: ({self.coordenada.x },{self.coordenada.y})" 
         cadena = f"{self.id},{pos_vieja.x},{pos_vieja.y},{self.coordenada.x },{self.coordenada.y}"
@@ -221,10 +192,19 @@ class Dron:
             print("No se ha podido establecer conexión(registri)")
         return client
 
+    def dibujar_tablero_dron(self):
+        root = tk.Tk()
+        tablero = Tablero(root, 20, 20)
+        tablero.cuadros=self.mapa.cuadros
+        tablero.dibujar_tablero()
+        
+
     # *Menú del dron para interactuar con registry
     def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
+        
         token=""
         opc = 0
+        
         while(opc>4 or opc<1):
             print("\nHola, soy un dron, qué operación desea realizar?")
             print("[1] Dar de alta")
@@ -232,11 +212,11 @@ class Dron:
             print("[3] Dar de baja")
             print("[4] Añadir al espectaculo")
             print("[5] Desconectar")
+            
             opc=int(sys.stdin.readline())
+            
             if(opc<1 or opc>5):
                 print("Opción no válida, inténtelo de nuevo")
-                
-            
         
         if (opc==1):
                 alias = ""
@@ -267,7 +247,7 @@ class Dron:
         elif (opc==2):
                       
                 print("Dime el Alias del dron que quieres modificar")
-                alias = sys.stdin.readline()()
+                alias = sys.stdin.readline()
                 
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"      
@@ -281,7 +261,7 @@ class Dron:
                 
                 if message != "No existe":              
                     print(message) 
-                    alias = sys.stdin.readline()()
+                    alias = sys.stdin.readline()
                                             
                     message_bytes = alias.encode(FORMAT)
                     message_length = len(message_bytes)
@@ -301,7 +281,7 @@ class Dron:
                        
         elif (opc==3):
             print("Introduce el alias del dron que quieres eliminar")
-            alias = sys.stdin.readline()()
+            alias = sys.stdin.readline()
             #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
             message = f"{opc} {alias}"
             self.enviar_mensaje(cliente, message)
@@ -332,32 +312,10 @@ class Dron:
                     self.mapa.cuadros = mapa_actualizado_cuadros
                     pos_vieja=self.coordenada
                     self.mover(self.destino)
-                    print(self.estado)
                     self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
-                    print("rot")
-            print("bbbbbb")       
-            self.recibir_vuelta("127.0.0.1", 9092)
-            print("ccccccc")
-            self.color = "Rojo"
-            print("voy a la segunda vuelta")
-            while(self.color=="Rojo"):
-                print("entro")
-                mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
-                print("aaaa")
-                if(mapa_actualizado_cuadros != self.mapa.cuadros):
-                    self.mapa.cuadros = mapa_actualizado_cuadros
-                    pos_vieja=self.coordenada
-                    self.mover(self.destino)
-                    self.notificar_posicion_casa("127.0.0.1", 9092, pos_vieja)
-
+        
         if(opc!=5):
             self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
-            
-    def dibujar_tablero_dron(self):
-        root = tk.Tk()
-        tablero = Tablero(root, 20, 20)
-        tablero.cuadros=self.mapa.cuadros
-        tablero.dibujar_tablero()
 
 
 if (len(sys.argv) == 5):
@@ -369,7 +327,7 @@ if (len(sys.argv) == 5):
     SERVER_eng = sys.argv[3]
     PORT_eng = int(sys.argv[4])
     ADDR_eng = (SERVER, PORT)
-    dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
+    dron.menu(SERVER, PORT, cliente_reg, SERVER_eng , PORT_eng)
     
             
             

@@ -1,21 +1,31 @@
 import socket
+import sys
+import json
+import random
+
+HEADER = 64
+FORMAT = 'utf-8'
+SERVER = "127.0.0.5"
 
 class AD_Weather:
-    def __init__(self, puerto):
+    def __init__(self, puerto, ciudades):
         self.puerto = puerto
-        self.ciudades = {
-            "Madrid": 25,
-            "Londres": 20,
-            "París": 22,
-            # ... otras ciudades y sus temperaturas
-        }
+        self.ciudades = ciudades
 
     def obtener_temperatura(self, ciudad):
-        return self.ciudades.get(ciudad, "No disponible")
+        return self.ciudades[ciudad]
+    
+    def enviar_mensaje(self, cliente, msg): 
+        message = msg.encode(FORMAT)
+        msg_length = len(message)
+        send_length = str(msg_length).encode(FORMAT)
+        send_length += b' ' * (HEADER - len(send_length))
+        cliente.send(send_length)
+        cliente.send(message)
 
     def iniciar_servidor(self):
         servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        servidor.bind(('localhost', self.puerto))
+        servidor.bind((SERVER, self.puerto))
         servidor.listen()
 
         print(f"Servidor de clima escuchando en el puerto {self.puerto}")
@@ -24,14 +34,22 @@ class AD_Weather:
             conn, addr = servidor.accept()
             print(f"Conexión establecida desde {addr}")
 
-            ciudad = conn.recv(1024).decode('utf-8')
+            ciudad = ""
+            while ciudad == "":
+                long = conn.recv(HEADER).decode(FORMAT)
+                if long:
+                    long = int(long)
+                    ciudad = conn.recv(long).decode(FORMAT) 
 
-            temperatura = self.obtener_temperatura(ciudad)
+            # Cargar el archivo JSON
+            with open(self.ciudades) as file:
+                datos = json.load(file)
 
-            conn.send(str(temperatura).encode('utf-8'))
-            conn.close()
+            temperatura = str(datos[ciudad])
+            self.enviar_mensaje(conn, temperatura)
 
-if __name__ == "__main__":
-    puerto = 10000  # Puerto de escucha
-    weather_server = AD_Weather(puerto)
+if (len(sys.argv) == 3):
+    puerto = int(sys.argv[1])
+    fichero = sys.argv[2]
+    weather_server = AD_Weather(puerto, fichero)
     weather_server.iniciar_servidor()

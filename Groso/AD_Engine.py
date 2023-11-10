@@ -37,8 +37,8 @@ class AD_Engine:
         self.ip_weather = ip_weather
         self.puerto_weather = puerto_weather
         self.figuras = ""
-        self.volvemos = ""
         self.drones = []
+        self.ciudad = "Marvella"
         
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
@@ -48,35 +48,6 @@ class AD_Engine:
         send_length += b' ' * (HEADER - len(send_length))
         cliente.send(send_length)
         cliente.send(message)
-        
-    # *Comunica con el servidor clima y notifica la temperatura en grados
-    def consultar_clima(self, server, port, ciudad):
-        try:
-            #Establece conexión con el servidor (weather)
-            ADDR = (server, port)
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(ADDR)
-            print (f"Establecida conexión (weather) en [{ADDR}]")
-            
-            #Enviamos la ciudad que queremos
-            message = f"{ciudad}"
-            self.enviar_mensaje(client, message)
-            
-            #Esperamos respuesta del servidor del clima
-            tiempo = ""
-            #Averigua el clima
-            while (tiempo==""):
-                    long = client.recv(HEADER).decode(FORMAT)
-                    if long:
-                        long = int(long)
-                        tiempo = client.recv(long).decode(FORMAT)
-                        print("Recibido tiempo, grados:" + tiempo)    
-                        tiempo = int(tiempo)                          
-        except:
-            print("No se ha podido establecer conexión(weather)")
-            
-        return tiempo
-          
         
     
     # *Notifica del estado del mapa a los drones
@@ -143,62 +114,34 @@ class AD_Engine:
                 if(finalx==nuevax and finaly==nuevay):
                     self.mapa.estado_final(nuevax, nuevay)
                     
-                    
-    def recibir_posiciones_casa(self, servidor_kafka, puerto_kafka, figura):
-        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka),
-                                 consumer_timeout_ms=1400)
-
-        topic = "posicion_a_engine_topic_casa"
-        
-        consumer.subscribe([topic])
-        
-        for msg in consumer:
-            if msg.value:
-                mensaje = loads(msg.value.decode('utf-8'))
                 
-                separado = mensaje.split(',')
-                id = int(separado[0])
-                viejax = int(separado[1])
-                viejay = int(separado[2])
-                nuevax = int(separado[3])
-                nuevay = int(separado[4])  
-                cont=1
-                
-                print("pos nueva ", viejax , viejay)
-                
-                for clave in self.figuras:
-                    if cont == figura:
-                        drones_figura = self.figuras[clave]
-                        break
-                    cont=cont+1
-                finalx=int(drones_figura[id].split(",")[0])
-                finaly=int(drones_figura[id].split(",")[1])
-                self.mapa.mover_contenido(id,(viejax,viejay),(nuevax,nuevay))
-                if(finalx==nuevax and finaly==nuevay):
-                    self.mapa.estado_final(nuevax, nuevay)
-                    
-    def volver_a_casa(self, figuras, n_fig, servidor_kafka, puerto_kafka): # !KAFKA
-        producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
-        
-        topic = "volver_a_casa"
-        
-        drones_figura=""
-        
-        cont=1
-        for clave in figuras:
-            if cont == n_fig:
-                drones_figura = figuras[clave]
-                break
-            cont=cont+1
-           
-        cadena = str(drones_figura)
-        time.sleep(0.3)
-        producer.send(topic, dumps(cadena).encode('utf-8'))
-        producer.flush()            
         
     # *Acaba con la acción
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
+            
+    # *Función que comunica con el servidor(engine) y hace lo que le mande
+    def contactar_weather(self, ip_weather, port_weather):              
+        #Establece conexión con el servidor (weather)
+        try:
+            ADDR_wth = (ip_weather, port_weather)
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect(ADDR_wth)
+
+            print (f"Establecida conexión (weather) en [{ADDR_wth}]")  
+            
+            self.enviar_mensaje(client, self.ciudad)
+                    
+            #Una vez establecida la conexión
+            temperatura = ""
+            while temperatura == "":
+                long = client.recv(HEADER).decode(FORMAT)
+                if long:
+                    long = int(long)
+                    temperatura = client.recv(long).decode(FORMAT)                
+            return temperatura
+        except:
+            print("No se ha podido establecer conexión(engine)")
             
     # *Procesa el fichero de figuras
     def procesar_fichero(self, fichero):
@@ -225,31 +168,6 @@ class AD_Engine:
             figura_actual = {}
             # *? Ejemplo de figuras ("Pollito" : [5 : {2,3} , 6 : {5,6} .... ], "Corazón" : [....] , ....)
         self.figuras = figuras
-        
-    def procesar_fichero_la(self, fichero):
-        az = {}  
-        sa = {}  
-
-        with open(fichero, 'r') as archivo:
-            data = json.load(archivo)
-
-        for figura in data['figuras']:
-            nombre_figura = figura['Nombre'] 
-            drones = figura['Drones']
-                    
-            
-            for drone in drones:
-                id_drone = (drone['ID'])
-                Cord = str(drone['POS'])
-                #pos_x = int(posicion.split(",")[0])
-                #pos_y = int(posicion.split(",")[1])
-                #Cord = pickle.dumps(Coordenada(pos_x,pos_y))
-                sa[id_drone] = Cord
-                            
-            az[nombre_figura] = sa
-            sa = {}
-            # *? Ejemplo de figuras ("Pollito" : [5 : {2,3} , 6 : {5,6} .... ], "Corazón" : [....] , ....)
-        self.volvemos = az
         
     # *Autentica si el dron está registrado
     def autenticar_dron(self, conn):
@@ -288,7 +206,6 @@ class AD_Engine:
         tablero = Tablero(root, 20, 20)
         tablero.cuadros=self.mapa.cuadros
         tablero.dibujar_tablero()
-        
         
         
     def acabada_figura(self, n_fig):
@@ -330,18 +247,6 @@ class AD_Engine:
                 self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura) 
                 self.dibujar_tablero_engine()
                 salimos = self.acabada_figura(figura)
-                contador=contador+1
-                
-            hemos_acabado = False
-            self.procesar_fichero_la("volvemos.json")
-            print(self.volvemos)
-            self.volver_a_casa(self.figuras, figura, self.ip_broker, 9092)
-            while (hemos_acabado==False):
-                self.enviar_tablero(self.ip_broker, self.puerto_broker)
-                self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura)
-                print() 
-                self.dibujar_tablero_engine()
-                hemos_acabado = self.acabada_figura(figura)
                 contador=contador+1
                 
         #conn.close()
@@ -388,8 +293,9 @@ if (len(sys.argv) == 7):
     print("[STARTING] Servidor inicializándose...")  
     engine = AD_Engine(puerto_escucha, max_drones, ip_broker , puerto_broker, ip_weather, puerto_weather)
     engine.procesar_fichero(fichero)
-    if fichero != "":   
-        engine.start()
+    print("weather " + str(engine.contactar_weather("127.0.0.5", 5054)))
+    #if fichero != "":   
+    #    engine.start()
         
 
 if (len(sys.argv) == 2):

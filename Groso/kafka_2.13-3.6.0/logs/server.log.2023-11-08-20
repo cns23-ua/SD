@@ -1,7 +1,0 @@
-[2023-11-08 20:50:13,189] INFO Creating topic acabado_a_engine_topic with configuration {} and initial partition assignment HashMap(0 -> ArrayBuffer(0)) (kafka.zk.AdminZkClient)
-[2023-11-08 20:50:13,217] INFO [Controller id=0, targetBrokerId=0] Node 0 disconnected. (org.apache.kafka.clients.NetworkClient)
-[2023-11-08 20:50:13,228] INFO [ReplicaFetcherManager on broker 0] Removed fetcher for partitions Set(acabado_a_engine_topic-0) (kafka.server.ReplicaFetcherManager)
-[2023-11-08 20:50:13,240] INFO [LogLoader partition=acabado_a_engine_topic-0, dir=/tmp/kafka-logs] Loading producer state till offset 0 with message format version 2 (kafka.log.UnifiedLog$)
-[2023-11-08 20:50:13,241] INFO Created log for partition acabado_a_engine_topic-0 in /tmp/kafka-logs/acabado_a_engine_topic-0 with properties {} (kafka.log.LogManager)
-[2023-11-08 20:50:13,242] INFO [Partition acabado_a_engine_topic-0 broker=0] No checkpointed highwatermark is found for partition acabado_a_engine_topic-0 (kafka.cluster.Partition)
-[2023-11-08 20:50:13,242] INFO [Partition acabado_a_engine_topic-0 broker=0] Log loaded for partition acabado_a_engine_topic-0 with initial high watermark 0 (kafka.cluster.Partition)
