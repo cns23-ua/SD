@@ -146,6 +146,26 @@ class AD_Engine:
     # *Acaba con la acción
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
+        
+     # *Función que comunica con el servidor(engine) y hace lo que le mande
+    def contactar_weather(self, ip_weather, port_weather):              
+        #Establece conexión con el servidor (weather)
+        try:
+            ADDR_wth = (ip_weather, port_weather)
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect(ADDR_wth)
+
+            print (f"Establecida conexión (weather) en [{ADDR_wth}]")          
+            #Una vez establecida la conexión
+            temperatura = ""
+            while temperatura == "":
+                long = client.recv(HEADER).decode(FORMAT)
+                if long:
+                    long = int(long)
+                    temperatura = client.recv(long).decode(FORMAT)                
+            return temperatura
+        except:
+            print("No se ha podido establecer conexión(engine)")
             
     # *Procesa el fichero de figuras
     def procesar_fichero(self, fichero):
@@ -273,8 +293,9 @@ if (len(sys.argv) == 7):
     print("[STARTING] Servidor inicializándose...")  
     engine = AD_Engine(puerto_escucha, max_drones, ip_broker , puerto_broker, ip_weather, puerto_weather)
     engine.procesar_fichero(fichero)
-    if fichero != "":   
-        engine.start()
+    print("weather " + str(engine.contactar_weather("127.0.0.5", 5054)))
+    #if fichero != "":   
+    #    engine.start()
         
 
 if (len(sys.argv) == 2):

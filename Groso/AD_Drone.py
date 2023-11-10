@@ -7,8 +7,8 @@ import json
 import time
 import secrets
 from json import dumps
+import tkinter as tk
 import string
-from confluent_kafka import Consumer, KafkaError
 from kafka import KafkaProducer
 from tablero import *
 import pickle
@@ -192,10 +192,19 @@ class Dron:
             print("No se ha podido establecer conexión(registri)")
         return client
 
+    def dibujar_tablero_dron(self):
+        root = tk.Tk()
+        tablero = Tablero(root, 20, 20)
+        tablero.cuadros=self.mapa.cuadros
+        tablero.dibujar_tablero()
+        
+
     # *Menú del dron para interactuar con registry
     def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
+        
         token=""
         opc = 0
+        
         while(opc>4 or opc<1):
             print("\nHola, soy un dron, qué operación desea realizar?")
             print("[1] Dar de alta")
@@ -203,16 +212,16 @@ class Dron:
             print("[3] Dar de baja")
             print("[4] Añadir al espectaculo")
             print("[5] Desconectar")
-            opc=int(input())
+            
+            opc=int(sys.stdin.readline())
+            
             if(opc<1 or opc>5):
                 print("Opción no válida, inténtelo de nuevo")
-                
-            
         
         if (opc==1):
                 alias = ""
                 print("\nIntroduce mi alias")
-                alias = input()
+                alias = sys.stdin.readline()
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"
                 self.enviar_mensaje(cliente, message)
@@ -238,7 +247,7 @@ class Dron:
         elif (opc==2):
                       
                 print("Dime el Alias del dron que quieres modificar")
-                alias = input()
+                alias = sys.stdin.readline()
                 
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"      
@@ -252,7 +261,7 @@ class Dron:
                 
                 if message != "No existe":              
                     print(message) 
-                    alias = input()
+                    alias = sys.stdin.readline()
                                             
                     message_bytes = alias.encode(FORMAT)
                     message_length = len(message_bytes)
@@ -272,7 +281,7 @@ class Dron:
                        
         elif (opc==3):
             print("Introduce el alias del dron que quieres eliminar")
-            alias = input()
+            alias = sys.stdin.readline()
             #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
             message = f"{opc} {alias}"
             self.enviar_mensaje(cliente, message)
@@ -304,15 +313,9 @@ class Dron:
                     pos_vieja=self.coordenada
                     self.mover(self.destino)
                     self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
-
+        
         if(opc!=5):
             self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
-            
-    def dibujar_tablero_dron(self):
-        root = tk.Tk()
-        tablero = Tablero(root, 20, 20)
-        tablero.cuadros=self.mapa.cuadros
-        tablero.dibujar_tablero()
 
 
 if (len(sys.argv) == 5):
@@ -324,7 +327,7 @@ if (len(sys.argv) == 5):
     SERVER_eng = sys.argv[3]
     PORT_eng = int(sys.argv[4])
     ADDR_eng = (SERVER, PORT)
-    dron.menu(SERVER,PORT, cliente_reg,SERVER_eng , PORT_eng)
+    dron.menu(SERVER, PORT, cliente_reg, SERVER_eng , PORT_eng)
     
             
             

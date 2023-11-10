@@ -1,17 +1,27 @@
 import socket
-
+import sys
+import json
+import random
 
 HEADER = 64
 FORMAT = 'utf-8'
-SERVER = "127.0.0.4"
+SERVER = "127.0.0.5"
 
 class AD_Weather:
     def __init__(self, puerto, ciudades):
         self.puerto = puerto
-        self.ciudades = eval(ciudades)
+        self.ciudades = ciudades
 
     def obtener_temperatura(self, ciudad):
         return self.ciudades[ciudad]
+    
+    def enviar_mensaje(self, cliente, msg): 
+        message = msg.encode(FORMAT)
+        msg_length = len(message)
+        send_length = str(msg_length).encode(FORMAT)
+        send_length += b' ' * (HEADER - len(send_length))
+        cliente.send(send_length)
+        cliente.send(message)
 
     def iniciar_servidor(self):
         servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -24,16 +34,17 @@ class AD_Weather:
             conn, addr = servidor.accept()
             print(f"Conexión establecida desde {addr}")
 
-            msg_length = conn.recv(HEADER).decode(FORMAT)
-            if msg_length:
-                msg_length = int(msg_length)
-                message = conn.recv(msg_length).decode(FORMAT)
-                
-                temperatura = self.obtener_temperatura(message)
+            # Cargar el archivo JSON
+            with open(self.ciudades) as file:
+                datos = json.load(file)
 
-            conn.send(str(temperatura).encode('utf-8'))
+            # Obtener una ciudad aleatoria
+            ciudad_aleatoria = random.choice(list(datos.keys()))
+            temperatura = str(datos[ciudad_aleatoria])
+            self.enviar_mensaje(conn, temperatura)
 
-if __name__ == "__main__":
-    puerto = 10000  # Puerto de escucha
-    weather_server = AD_Weather(puerto, "ciudades.json")
+if (len(sys.argv) == 3):
+    puerto = int(sys.argv[1])
+    fichero = sys.argv[2]
+    weather_server = AD_Weather(puerto, fichero)
     weather_server.iniciar_servidor()
