@@ -90,7 +90,7 @@ class Dron:
                 mensaje = loads(msg.value.decode('utf-8'))
                
                 self.destino = eval(mensaje)[self.id]
-                print("el destino es:" , self.destino)
+                
                 x = int(self.destino.split(",")[0])
                 y = int(self.destino.split(",")[1])
                 self.destino = Coordenada(x,y)

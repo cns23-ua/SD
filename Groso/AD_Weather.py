@@ -34,13 +34,18 @@ class AD_Weather:
             conn, addr = servidor.accept()
             print(f"Conexión establecida desde {addr}")
 
+            ciudad = ""
+            while ciudad == "":
+                long = conn.recv(HEADER).decode(FORMAT)
+                if long:
+                    long = int(long)
+                    ciudad = conn.recv(long).decode(FORMAT) 
+
             # Cargar el archivo JSON
             with open(self.ciudades) as file:
                 datos = json.load(file)
 
-            # Obtener una ciudad aleatoria
-            ciudad_aleatoria = random.choice(list(datos.keys()))
-            temperatura = str(datos[ciudad_aleatoria])
+            temperatura = str(datos[ciudad])
             self.enviar_mensaje(conn, temperatura)
 
 if (len(sys.argv) == 3):

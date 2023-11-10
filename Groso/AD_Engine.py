@@ -38,6 +38,7 @@ class AD_Engine:
         self.puerto_weather = puerto_weather
         self.figuras = ""
         self.drones = []
+        self.ciudad = "Marvella"
         
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
@@ -47,35 +48,6 @@ class AD_Engine:
         send_length += b' ' * (HEADER - len(send_length))
         cliente.send(send_length)
         cliente.send(message)
-        
-    # *Comunica con el servidor clima y notifica la temperatura en grados
-    def consultar_clima(self, server, port, ciudad):
-        try:
-            #Establece conexión con el servidor (weather)
-            ADDR = (server, port)
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(ADDR)
-            print (f"Establecida conexión (weather) en [{ADDR}]")
-            
-            #Enviamos la ciudad que queremos
-            message = f"{ciudad}"
-            self.enviar_mensaje(client, message)
-            
-            #Esperamos respuesta del servidor del clima
-            tiempo = ""
-            #Averigua el clima
-            while (tiempo==""):
-                    long = client.recv(HEADER).decode(FORMAT)
-                    if long:
-                        long = int(long)
-                        tiempo = client.recv(long).decode(FORMAT)
-                        print("Recibido tiempo, grados:" + tiempo)    
-                        tiempo = int(tiempo)                          
-        except:
-            print("No se ha podido establecer conexión(weather)")
-            
-        return tiempo
-          
         
     
     # *Notifica del estado del mapa a los drones
@@ -111,7 +83,7 @@ class AD_Engine:
     # * Funcion que recibe el destino del dron mediante kafka
     def recibir_posiciones(self, servidor_kafka, puerto_kafka, figura):
         consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka),
-                                 consumer_timeout_ms=3000)
+                                 consumer_timeout_ms=1400)
 
         topic = "posicion_a_engine_topic"
         
@@ -141,13 +113,14 @@ class AD_Engine:
                 self.mapa.mover_contenido(id,(viejax,viejay),(nuevax,nuevay))
                 if(finalx==nuevax and finaly==nuevay):
                     self.mapa.estado_final(nuevax, nuevay)
+                    
                 
         
     # *Acaba con la acción
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
-        
-     # *Función que comunica con el servidor(engine) y hace lo que le mande
+            
+    # *Función que comunica con el servidor(engine) y hace lo que le mande
     def contactar_weather(self, ip_weather, port_weather):              
         #Establece conexión con el servidor (weather)
         try:
@@ -155,7 +128,10 @@ class AD_Engine:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR_wth)
 
-            print (f"Establecida conexión (weather) en [{ADDR_wth}]")          
+            print (f"Establecida conexión (weather) en [{ADDR_wth}]")  
+            
+            self.enviar_mensaje(client, self.ciudad)
+                    
             #Una vez establecida la conexión
             temperatura = ""
             while temperatura == "":
@@ -231,22 +207,46 @@ class AD_Engine:
         tablero.cuadros=self.mapa.cuadros
         tablero.dibujar_tablero()
         
+        
+    def acabada_figura(self, n_fig):
+        cont = 1
+        for clave in self.figuras:
+            if cont == n_fig:
+                figura = self.figuras[clave]
+                break
+            cont=cont+1
+
+        for clave in figura:
+            x=int(figura[clave].split(",")[0])-1
+            y=int(figura[clave].split(",")[1])-1
+            print ("coomparación: ", clave, self.mapa.cuadros[x][y])
+            if(self.mapa.cuadros[x][y]!=0):
+                if (clave == self.mapa.cuadros[x][y][0][0]):
+                    return True
+                else:
+                    return False
+            else:
+                return False
+                
+        
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         global CONEX_ACTIVAS
         CONEX_ACTIVAS = CONEX_ACTIVAS + 1
         self.autenticar_dron(conn)
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,["Rojo"]))
-        if CONEX_ACTIVAS == 6:
+        if CONEX_ACTIVAS == 2:
             self.notificar_destinos(self.figuras, 2, self.ip_broker, 9092)
-            
+            self.dibujar_tablero_engine()
     
             figura = 2
             contador = 0
-            while contador<100:
+            salimos = False
+            while (salimos==False):
                 self.enviar_tablero(self.ip_broker, self.puerto_broker)
                 self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura) 
                 self.dibujar_tablero_engine()
+                salimos = self.acabada_figura(figura)
                 contador=contador+1
                 
         #conn.close()
@@ -276,7 +276,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras.json"
+    fichero="TestFig.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]

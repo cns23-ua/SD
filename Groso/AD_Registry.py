@@ -168,6 +168,8 @@ def handle_client(conn, addr):
         
 
 def start():
+    with open(JSON_FILE, 'w') as archivo:
+        json.dump({}, archivo)
     server.listen()
     print(f"[LISTENING] Servidor a la escucha en {SERVER}")
     CONEX_ACTIVAS = threading.active_count()-1
