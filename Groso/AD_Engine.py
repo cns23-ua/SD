@@ -240,8 +240,18 @@ class AD_Engine:
 
        
         return True  
+    
+    def acabado_espectaculo(self, n_fig, n_drones):
+        acabada=False
+        if(self.mapa.cuadros[0][0]!=0):
+            if len(self.mapa.cuadros[0][0][0]) == n_drones:
+                acabada=True
 
-                
+        return acabada  
+
+    def volver_a_base(self, n_fig):
+        self.figuras = {figura: {punto: '1,1' for punto in coordenadas} for figura, coordenadas in self.figuras.items()}
+        self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
         
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
@@ -273,7 +283,17 @@ class AD_Engine:
                     self.dibujar_tablero_engine()               
                     salimos = self.acabada_figura(n_fig)
                     self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                
+                    
+                if n_fig==len(self.figuras):
+                    print("He entrado jefe")
+                    self.volver_a_base(n_fig)
+                    acabamos = False
+                    while (acabamos==False):
+                        self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                        self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                        self.dibujar_tablero_engine()               
+                        acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
+                        self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
 
                 
                 
