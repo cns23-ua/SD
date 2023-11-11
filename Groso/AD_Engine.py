@@ -250,33 +250,29 @@ class AD_Engine:
         self.autenticar_dron(conn)
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
-        if CONEX_ACTIVAS == 4:
+                    
+        for n_fig in range(len(self.figuras)):    
+            n_fig = n_fig+1
             
-            self.notificar_destinos(self.figuras, 2, self.ip_broker, 9092)
-            self.dibujar_tablero_engine()
-    
-            figura = 2
-            contador = 0
-            salimos = False
-            while (salimos==False):
-                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura)              
-                self.dibujar_tablero_engine()               
-                salimos = self.acabada_figura(figura)
+            cont = 1
+            for clave in self.figuras:
+                if cont == n_fig:
+                    figura = self.figuras[clave]
+                    break
+                cont = cont + 1
+        
+            if CONEX_ACTIVAS == len(figura):
                 
-                
-                
-            self.notificar_destinos(self.figuras, 2, self.ip_broker, 9092)
-            self.dibujar_tablero_engine()
-    
-            figura = 2
-            contador = 0
-            salimos = False
-            while (salimos==False):
-                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                self.recibir_posiciones(self.ip_broker, self.puerto_broker, figura)              
-                self.dibujar_tablero_engine()               
-                salimos = self.acabada_figura(figura)
+                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                self.dibujar_tablero_engine()
+        
+                salimos = False
+                while (salimos==False):
+                    self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                    self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                    self.dibujar_tablero_engine()               
+                    salimos = self.acabada_figura(n_fig)
+                    self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                 
 
                 
