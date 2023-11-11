@@ -1,4 +1,0 @@
-python3 AD_Engine.py 5050 8 127.0.0.1 9092 127.0.0.5 5052
-python3 AD_Drone.py 127.0.0.3 5051 127.0.0.2 5050
-python3 AD_Registry.py 5051
-python3 AD_Weather.py 5052 ciudades
