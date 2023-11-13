@@ -252,6 +252,16 @@ class AD_Engine:
     def volver_a_base(self, n_fig):
         self.figuras = {figura: {punto: '1,1' for punto in coordenadas} for figura, coordenadas in self.figuras.items()}
         self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+<<<<<<< HEAD
+=======
+        
+    def figura_completada(self):
+        root = tk.Tk()
+        tablero = Tablero(root, 20, 20)
+        tablero.cuadros=self.mapa.cuadros
+        tablero.mostrar_mensaje("FIGURA COMPLETADA!")
+        tablero.dibujar_tablero()    
+>>>>>>> cns23
         
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
@@ -284,8 +294,14 @@ class AD_Engine:
                     salimos = self.acabada_figura(n_fig)
                     self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                     
+<<<<<<< HEAD
                 if n_fig==len(self.figuras):
                     print("He entrado jefe")
+=======
+                self.figura_completada()
+                    
+                if n_fig==len(self.figuras):
+>>>>>>> cns23
                     self.volver_a_base(n_fig)
                     acabamos = False
                     while (acabamos==False):
@@ -325,7 +341,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="TestFig.json"
+    fichero="AwD_figuras_correccion.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
