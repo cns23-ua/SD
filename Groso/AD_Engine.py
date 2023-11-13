@@ -24,7 +24,6 @@ SERVER = "127.0.0.2"
 CONEX_ACTIVAS = 0
 
 
-
 class AD_Engine:
         
     # *Constructor
@@ -146,10 +145,11 @@ class AD_Engine:
                 long = client.recv(HEADER).decode(FORMAT)
                 if long:
                     long = int(long)
-                    temperatura = client.recv(long).decode(FORMAT)                
-            return temperatura
+                    temperatura = client.recv(long).decode(FORMAT) 
+            return int(temperatura)
         except:
             print("No se ha podido establecer conexión(engine)")
+            return "Fallo"
             
     # *Procesa el fichero de figuras
     def procesar_fichero(self, fichero):
@@ -184,7 +184,6 @@ class AD_Engine:
             msg_length = int(msg_length)
             message = conn.recv(msg_length).decode(FORMAT)
             #Spliteamos el mensaje en alias y token y leemos el json
-            print("hola", message)
             alias = message.split()[0]
             id = int(message.split()[1])
             token = message.split()[2]  
@@ -267,43 +266,77 @@ class AD_Engine:
         self.autenticar_dron(conn)
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
-                    
-        for n_fig in range(len(self.figuras)):    
-            n_fig = n_fig+1
-            
-            cont = 1
-            for clave in self.figuras:
-                if cont == n_fig:
-                    figura = self.figuras[clave]
-                    break
-                cont = cont + 1
+        weather = self.contactar_weather(ip_weather, puerto_weather)
+        print("Fuera:", weather)
         
-            if CONEX_ACTIVAS == len(figura):
+        if(weather!="Fallo"):
+            if(weather>0):
+                for n_fig in range(len(self.figuras)):    
+                    n_fig = n_fig+1
+                    
+                    cont = 1
+                    for clave in self.figuras:
+                        if cont == n_fig:
+                            figura = self.figuras[clave]
+                            break
+                        cont = cont + 1
                 
-                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                self.dibujar_tablero_engine()
-        
-                salimos = False
-                while (salimos==False):
-                    self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                    self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
-                    self.dibujar_tablero_engine()               
-                    salimos = self.acabada_figura(n_fig)
-                    self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                    
-                self.figura_completada()
-                    
-                if n_fig==len(self.figuras):
-                    self.volver_a_base(n_fig)
-                    acabamos = False
-                    while (acabamos==False):
-                        self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                        self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
-                        self.dibujar_tablero_engine()               
-                        acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
+                    if CONEX_ACTIVAS == len(figura):
+                        
                         self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-
+                        self.dibujar_tablero_engine()
                 
+                        salimos = False
+                        while (salimos==False):
+                            self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                            self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                            self.dibujar_tablero_engine()               
+                            salimos = self.acabada_figura(n_fig)
+                            self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                            
+                        self.figura_completada()
+                            
+                        if (n_fig==len(self.figuras)):
+                            self.volver_a_base(n_fig)
+                            acabamos = False
+                            while (acabamos==False):
+                                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                                self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                                self.dibujar_tablero_engine()               
+                                acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
+                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                        
+                        
+                        weather=self.contactar_weather(ip_weather, puerto_weather)
+                        print("Dentro:", weather)
+                        
+                        if (weather != "Fallo" and weather<1):
+                            print("Volvemos a casa, situaciones climáticas adversas")
+                            self.volver_a_base(n_fig)
+                            acabamos = False
+                            while (acabamos==False):
+                                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                                self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                                self.dibujar_tablero_engine()               
+                                acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
+                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                            break
+                                
+                        elif (weather=="Fallo"):
+                            print("No podemos contactar con weather, volvemos a casa")
+                            self.volver_a_base(n_fig)
+                            acabamos = False
+                            while (acabamos==False):
+                                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                                self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                                self.dibujar_tablero_engine()               
+                                acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
+                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                            break
+            else:
+                print("CONDICIONES CLIMATICAS ADVERSAS ESPECTACULO FINALIZADO")
+        else:
+            print("No se puede contactar con weather, no podemos iniciar el vuelo")        
                 
       
         #conn.close()
@@ -333,7 +366,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras_correccion.json"
+    fichero="TestFig.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
@@ -347,10 +380,8 @@ if (len(sys.argv) == 7):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(ADDR)
     MAX_CONEXIONES = max_drones
-    print("[STARTING] Servidor inicializándose...")  
     engine = AD_Engine(puerto_escucha, max_drones, ip_broker , puerto_broker, ip_weather, puerto_weather)
     engine.procesar_fichero(fichero)
-    print("weather " + str(engine.contactar_weather(ip_weather, puerto_weather)))
     if fichero != "":   
         engine.start()
         

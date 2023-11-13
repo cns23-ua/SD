@@ -48,6 +48,7 @@ class AD_Weather:
             temperatura = str(datos[ciudad])
             self.enviar_mensaje(conn, temperatura)
 
+
 if (len(sys.argv) == 3):
     puerto = int(sys.argv[1])
     fichero = sys.argv[2]
