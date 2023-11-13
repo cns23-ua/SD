@@ -83,7 +83,9 @@ class AD_Engine:
     def recibir_posiciones(self, servidor_kafka, puerto_kafka, figura):
         consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka),
                                  consumer_timeout_ms=1400)
-
+        id_recibidos=[]
+        dron_menos=0
+        
         topic = "posicion_a_engine_topic"
         
         consumer.subscribe([topic])
@@ -98,9 +100,10 @@ class AD_Engine:
                 viejay = int(separado[2])
                 nuevax = int(separado[3])
                 nuevay = int(separado[4])  
+                
+                id_recibidos = id_recibidos + [id]
+                
                 cont=1
-                
-                
                 for clave in self.figuras:
                     if cont == figura:
                         drones_figura = self.figuras[clave]
@@ -112,11 +115,20 @@ class AD_Engine:
                 color = "red"
                 if(finalx==nuevax and finaly==nuevay):
                     color = "green"
-                
-                self.mapa.mover_contenido(id,(viejax,viejay),(nuevax,nuevay), color)
-                
-                
                     
+                self.mapa.mover_contenido(id,(viejax,viejay),(nuevax,nuevay), color)
+        
+        #print("IDs recibidos: ", id_recibidos)
+        #print("Mis drones :", self.drones)
+        for id_s in self.drones:
+            if id_s not in id_recibidos:
+                print("Hemos perdido el dron: ", id_s)
+                self.mapa.borrar_del_mapa(id_s)
+                self.drones = [x for x in self.drones if x != id_s]
+                dron_menos=-1
+                
+        
+        return dron_menos
                 
         
     # *Acaba con la acción
@@ -226,16 +238,17 @@ class AD_Engine:
 
         # Verifica cada posición de la figura en el mapa
         for clave in figura:
-            x = int(figura[clave].split(",")[0]) - 1
-            y = int(figura[clave].split(",")[1]) - 1
+            if clave in self.drones:
+                x = int(figura[clave].split(",")[0]) - 1
+                y = int(figura[clave].split(",")[1]) - 1
 
-            
-            if self.mapa.cuadros[x][y] != 0:
-               
-                if clave != self.mapa.cuadros[x][y][0][0]:
+                
+                if self.mapa.cuadros[x][y] != 0:
+                
+                    if clave != self.mapa.cuadros[x][y][0][0]:
+                        return False  
+                else:
                     return False  
-            else:
-                return False  
 
        
         return True  
@@ -267,7 +280,6 @@ class AD_Engine:
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
         weather = self.contactar_weather(ip_weather, puerto_weather)
-        print("Fuera:", weather)
         
         if(weather!="Fallo"):
             if(weather>0):
@@ -280,8 +292,14 @@ class AD_Engine:
                             figura = self.figuras[clave]
                             break
                         cont = cont + 1
+                    
+                    if n_fig==1:
+                        n_drones=len(figura)
+                    
+                    #print("Conexiones ", CONEX_ACTIVAS)
+                    #print("N_drones ", n_drones)
                 
-                    if CONEX_ACTIVAS == len(figura):
+                    if CONEX_ACTIVAS == n_drones:
                         
                         self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                         self.dibujar_tablero_engine()
@@ -289,7 +307,9 @@ class AD_Engine:
                         salimos = False
                         while (salimos==False):
                             self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                            self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                            resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
+                            n_drones=n_drones + resta       
+                            CONEX_ACTIVAS = CONEX_ACTIVAS + resta
                             self.dibujar_tablero_engine()               
                             salimos = self.acabada_figura(n_fig)
                             self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
@@ -301,24 +321,27 @@ class AD_Engine:
                             acabamos = False
                             while (acabamos==False):
                                 self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                                self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                                resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
+                                n_drones=n_drones + resta 
+                                NEX_ACTIVAS = CONEX_ACTIVAS + resta              
                                 self.dibujar_tablero_engine()               
                                 acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
                                 self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                         
                         
                         weather=self.contactar_weather(ip_weather, puerto_weather)
-                        print("Dentro:", weather)
-                        
+                                                
                         if (weather != "Fallo" and weather<1):
                             print("Volvemos a casa, situaciones climáticas adversas")
                             self.volver_a_base(n_fig)
                             acabamos = False
                             while (acabamos==False):
                                 self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                                self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                                resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
+                                n_drones=n_drones + resta       
+                                CONEX_ACTIVAS = CONEX_ACTIVAS + resta                                
                                 self.dibujar_tablero_engine()               
-                                acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
+                                acabamos = self.acabado_espectaculo(n_fig, n_drones)
                                 self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                             break
                                 
@@ -328,9 +351,11 @@ class AD_Engine:
                             acabamos = False
                             while (acabamos==False):
                                 self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                                self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)              
+                                resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
+                                n_drones=n_drones + resta       
+                                CONEX_ACTIVAS = CONEX_ACTIVAS + resta                                  
                                 self.dibujar_tablero_engine()               
-                                acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
+                                acabamos = self.acabado_espectaculo(n_fig, n_drones)
                                 self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                             break
             else:
@@ -366,7 +391,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="TestFig.json"
+    fichero="AwD_figuras.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]

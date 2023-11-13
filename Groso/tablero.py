@@ -99,6 +99,20 @@ class Tablero:
             self.cuadros[x][y] = nueva
 
              
+    def borrar_del_mapa(self, id):
+        for fila in range(self.filas):
+            for columna in range(self.columnas):
+                contenido=self.cuadros[fila][columna]
+                if(contenido!=0 and id in contenido[0]): 
+                    if contenido[1]>1:                 
+                        ids = [x for x in contenido[0] if x != id]
+                        numero = contenido[1]-1
+                        color = contenido[2]
+                        self.cuadros[fila][columna]=(ids,numero,color)
+                    else:
+                        self.cuadros[fila][columna]=0
+                        
+             
     def cerrar_ventana(self):
         self.root.destroy() 
         
