@@ -117,22 +117,9 @@ class Tablero:
         tupla_nueva=(self.cuadros[x][y][0],self.cuadros[x][y][1],"Verde")
         self.cuadros[x][y]=tupla_nueva
         
-    def mostrar_mensaje(self, mensaje):
-        x0 = 40  # Margen izquierdo
-        y0 = 10  # Margen superior
-        x1 = self.canvas.winfo_reqwidth() - 40  # Ancho del canvas - margen derecho
-        y1 = 30  # Altura del área del mensaje
-
-        # Crear un área para mostrar el mensaje
-        self.canvas.create_rectangle(x0, y0, x1, y1, fill="lightgray", outline="black")
-        
-        # Mostrar el mensaje en el área creada
-        x_text = (x0 + x1) / 2
-        y_text = (y0 + y1) / 2
-        self.canvas.create_text(x_text, y_text, text=mensaje, font=("Helvetica", 12, "bold"))
-        
     
 
 
     
    
+    

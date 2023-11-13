@@ -145,42 +145,41 @@ class Dron:
         
     # *Función que comunica con el servidor(engine) y hace lo que le mande
     def conectar_verify_engine(self, SERVER_eng, PORT_eng):              
+        #Establece conexión con el servidor (engine)
         try:
             ADDR_eng = (SERVER_eng, PORT_eng)
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR_eng)
-        
-            print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
+           
+            print (f"Establecida conexión (engine) en [{ADDR_eng}]")          
+            #Una vez establecida la conexión
             message = f"{self.alias} {self.id} {self.token}"      
-            self.enviar_mensaje(client, message)
+            self.enviar_mensaje(client , message)
             
+          
             orden = ""
-            while orden == "":
+            #me espero  que me den la orden o ser rechazado
+            while  orden == "":
                 orden = self.receive_message(client)
-                print("Esta es la orden:", orden)
-                orden_preparada = orden.split(" ")
-                
-            if orden == "Rechazado":
-                print("Conexión rechazada por el engine")
+                print("esta es la orden:" , orden)
+                orden_preparada=orden.split(" ")
+            if orden=="Rechazado":
+                print("Conexion rechazada por el engine")
                 client.close()
-            elif orden_preparada[0] == "RUN":
-                pos_fin = Coordenada(int(orden_preparada[1]), int(orden_preparada[2]))
-                while self.color == "Rojo":
-                    try:
-                        self.mover(pos_fin)
-                        self.enviar_mensaje(client, f"{self.posicion[0]} {self.posicion[1]}")
-                    except (ConnectionResetError, ConnectionAbortedError):
-                        print("Conexión con el servidor perdida.")
-                        break
+            elif (orden_preparada[0]=="RUN"):
+               
+                pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
+                while (self.estado=="Rojo"):
+                    
+                    self.mover(pos_fin)
+                    self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
                 client.send("Vuelvo a base")
-            elif orden == "END":
+            elif orden=="END":
                 client.close()
-        except Exception as e:
-            print(f"No se ha podido establecer conexión (engine): {e}")
-            if 'client' in locals():
-                client.close()
+        except:
+            print("No se ha podido establecer conexión(engine)")
         return client
-    
+        
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
         #Establece conexión con el servidor (engine)
@@ -303,24 +302,17 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
-            
-                self.conectar_verify_engine(SERVER_eng, PORT_eng)
+            self.conectar_verify_engine(SERVER_eng, PORT_eng)
 
-                while True:
-                    try:
-                        self.recibir_destino("127.0.0.1", 9092)
-                        mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
-                        if mapa_actualizado_cuadros != self.mapa.cuadros:
-                            self.mapa.cuadros = mapa_actualizado_cuadros
-                            pos_vieja = self.coordenada
-                            self.mover(self.destino)
-                            self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
-                            print("Destino:", self.destino.x, ",", self.destino.y)
-                    except (ConnectionResetError, ConnectionAbortedError):
-                        print("Conexión con el servidor perdida.")
-                        break
-
-
+            while(self.color=="Rojo"):
+                self.recibir_destino("127.0.0.1", 9092)
+                mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                if(mapa_actualizado_cuadros != self.mapa.cuadros):
+                    self.mapa.cuadros = mapa_actualizado_cuadros
+                    pos_vieja=self.coordenada
+                    self.mover(self.destino)
+                    self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+                    print("Destino: " , self.destino.x , "," , self.destino.y)
         
         if(opc!=5):
             self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
