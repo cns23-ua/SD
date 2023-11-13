@@ -303,19 +303,6 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
-<<<<<<< HEAD
-            self.conectar_verify_engine(SERVER_eng, PORT_eng)
-
-            while(self.color=="Rojo"):
-                self.recibir_destino("127.0.0.1", 9092)
-                mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
-                if(mapa_actualizado_cuadros != self.mapa.cuadros):
-                    self.mapa.cuadros = mapa_actualizado_cuadros
-                    pos_vieja=self.coordenada
-                    self.mover(self.destino)
-                    self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
-                    print("Destino: " , self.destino.x , "," , self.destino.y)
-=======
             
                 self.conectar_verify_engine(SERVER_eng, PORT_eng)
 
@@ -334,7 +321,6 @@ class Dron:
                         break
 
 
->>>>>>> cns23
         
         if(opc!=5):
             self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
