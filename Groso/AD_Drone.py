@@ -92,6 +92,9 @@ class Dron:
                 
                 x = int(self.destino.split(",")[0])
                 y = int(self.destino.split(",")[1])
+                if((x > 20 or x < 1) or (y > 20 or y < 1)):
+                    print("mi posicion no es valida me voy del espectaculo")
+                    sys.exit(1)
                 self.destino = Coordenada(x,y)
                 break  # Sale del bucle al recibir un mensaje exitoso
 
