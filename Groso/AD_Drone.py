@@ -34,7 +34,6 @@ class Dron:
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
         self.coordenada = self.siguiente_mov(pos_fin)
-        print(self.coordenada.x,self.coordenada.y)
         if (self.coordenada.x==pos_fin.x and self.coordenada.y==pos_fin.y):
             self.estado = "Verde"  # Cambiar a estado final si ha llegado a la nueva posición
         
@@ -161,10 +160,10 @@ class Dron:
             #me espero  que me den la orden o ser rechazado
             while  orden == "":
                 orden = self.receive_message(client)
-                print("esta es la orden:" , orden)
-                orden_preparada=orden.split(" ")
-            if orden=="Rechazado":
-                print("Conexion rechazada por el engine")
+                orden_preparada = orden.split(" ")
+                
+            if orden == "Rechazado":
+                print("Conexión rechazada por el engine")
                 client.close()
             elif (orden_preparada[0]=="RUN"):
                
@@ -302,17 +301,23 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
-            self.conectar_verify_engine(SERVER_eng, PORT_eng)
+            
+                self.conectar_verify_engine(SERVER_eng, PORT_eng)
 
-            while(self.color=="Rojo"):
-                self.recibir_destino("127.0.0.1", 9092)
-                mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
-                if(mapa_actualizado_cuadros != self.mapa.cuadros):
-                    self.mapa.cuadros = mapa_actualizado_cuadros
-                    pos_vieja=self.coordenada
-                    self.mover(self.destino)
-                    self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
-                    print("Destino: " , self.destino.x , "," , self.destino.y)
+                while True:
+                    try:
+                        self.recibir_destino("127.0.0.1", 9092)
+                        mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                        if mapa_actualizado_cuadros != self.mapa.cuadros:
+                            self.mapa.cuadros = mapa_actualizado_cuadros
+                            pos_vieja = self.coordenada
+                            self.mover(self.destino)
+                            self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+                            print("Destino:", self.destino.x, ",", self.destino.y)
+                            print("Posicion:", self.coordenada.x, ",", self.coordenada.y)
+                    except:
+                        print("Conexión con el servidor perdida.")
+                        break
         
         if(opc!=5):
             self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
