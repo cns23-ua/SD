@@ -82,20 +82,19 @@ class Dron:
         topic = "destinos_a_drones_topic"
         consumer.subscribe([topic])
 
-        try:
+        for msg in consumer:
             msg = consumer.poll(timeout_ms=timeout_segundos * 1000)
             if msg:
                 mensaje = loads(next(iter(msg.values()))[0].value.decode('utf-8'))
                 self.destino = eval(mensaje)[self.id]
-                x, y = map(int, self.destino.split(","))
-                self.destino = Coordenada(x, y)
-            else:
-                print("Error: No se pudo recibir el destino. El engine no está operativo.")
-                cliente.close()
-
-        except KafkaTimeoutError:
-            print("Error: Se agotó el tiempo de espera. El engine no está operativo.")
-            cliente.close()
+                
+                x = int(self.destino.split(",")[0])
+                y = int(self.destino.split(",")[1])
+                if((x > 20 or x < 1) or (y > 20 or y < 1)):
+                    print("mi posicion no es valida me voy del espectaculo")
+                    sys.exit(1)
+                self.destino = Coordenada(x,y)
+                break  # Sale del bucle al recibir un mensaje exitoso
 
     # * Función para recibir el mapa
     def recibir_mapa(self, servidor_kafka, puerto_kafka):
