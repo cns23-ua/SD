@@ -304,11 +304,12 @@ class Dron:
 
         elif (opc==4):
             
-                self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                
 
                 while True:
                     try:
-                        self.recibir_destino_con_timeout("127.0.0.1", 9092,5)
+                        self.recibir_destino_con_timeout("127.0.0.1", 9092,9,cliente)
                         mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
                         if mapa_actualizado_cuadros != self.mapa.cuadros:
                             self.mapa.cuadros = mapa_actualizado_cuadros
