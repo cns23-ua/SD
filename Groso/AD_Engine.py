@@ -269,8 +269,8 @@ class AD_Engine:
         root = tk.Tk()
         tablero = Tablero(root, 20, 20)
         tablero.cuadros=self.mapa.cuadros
-        tablero.mostrar_mensaje("FIGURA COMPLETADA!")
-        tablero.dibujar_tablero()    
+        tablero.dibujar_tablero()
+
         
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
@@ -391,7 +391,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras.json"
+    fichero="TestFig.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]

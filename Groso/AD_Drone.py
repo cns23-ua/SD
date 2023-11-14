@@ -15,6 +15,7 @@ import pickle
 #Consumidor.
 from kafka import KafkaConsumer
 from json import loads
+from confluent_kafka import KafkaError , Consumer
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -76,27 +77,29 @@ class Dron:
     
     # !Kafka:
     
-    # * Funcion que recibe el destino del dron mediante kafka
-    def recibir_destino(self, servidor_kafka, puerto_kafka):
-        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
 
+    def recibir_destino_con_timeout(self, servidor_kafka, puerto_kafka, timeout_segundos, cliente):
+        consumer = KafkaConsumer(bootstrap_servers=f"{servidor_kafka}:{puerto_kafka}")
         topic = "destinos_a_drones_topic"
-        
         consumer.subscribe([topic])
-        
-        for msg in consumer:
-            if msg.value:
-                mensaje = loads(msg.value.decode('utf-8'))
-               
+
+        try:
+            msg = consumer.poll(timeout_ms=timeout_segundos * 1000)
+            if msg:
+                mensaje = loads(next(iter(msg.values()))[0].value.decode('utf-8'))
                 self.destino = eval(mensaje)[self.id]
-                
-                x = int(self.destino.split(",")[0])
-                y = int(self.destino.split(",")[1])
+                x, y = map(int, self.destino.split(","))
                 if((x > 20 or x < 1) or (y > 20 or y < 1)):
                     print("mi posicion no es valida me voy del espectaculo")
                     sys.exit(1)
-                self.destino = Coordenada(x,y)
-                break  # Sale del bucle al recibir un mensaje exitoso
+                self.destino = Coordenada(x, y)
+            else:
+                print("Error: No se pudo recibir el destino. El engine no está operativo.")
+                cliente.close()
+
+        except KafkaTimeoutError:
+            print("Error: Se agotó el tiempo de espera. El engine no está operativo.")
+            cliente.close()
 
     # * Función para recibir el mapa
     def recibir_mapa(self, servidor_kafka, puerto_kafka):
@@ -309,7 +312,7 @@ class Dron:
 
                 while True:
                     try:
-                        self.recibir_destino("127.0.0.1", 9092)
+                        self.recibir_destino_con_timeout("127.0.0.1", 9092,7,cliente)
                         mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
                         if mapa_actualizado_cuadros != self.mapa.cuadros:
                             self.mapa.cuadros = mapa_actualizado_cuadros
