@@ -77,22 +77,21 @@ class Dron:
     # !Kafka:
     
     # * Funcion que recibe el destino del dron mediante kafka
-    def recibir_destino_con_timeout(self, servidor_kafka, puerto_kafka, timeout_segundos, cliente):
-        consumer = KafkaConsumer(bootstrap_servers=f"{servidor_kafka}:{puerto_kafka}")
-        topic = "destinos_a_drones_topic"
-        consumer.subscribe([topic])
+    def recibir_destino(self, servidor_kafka, puerto_kafka):
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
 
+        topic = "destinos_a_drones_topic"
+        
+        consumer.subscribe([topic])
+        
         for msg in consumer:
-            msg = consumer.poll(timeout_ms=timeout_segundos * 1000)
-            if msg:
-                mensaje = loads(next(iter(msg.values()))[0].value.decode('utf-8'))
+            if msg.value:
+                mensaje = loads(msg.value.decode('utf-8'))
+               
                 self.destino = eval(mensaje)[self.id]
                 
                 x = int(self.destino.split(",")[0])
                 y = int(self.destino.split(",")[1])
-                if((x > 20 or x < 1) or (y > 20 or y < 1)):
-                    print("mi posicion no es valida me voy del espectaculo")
-                    sys.exit(1)
                 self.destino = Coordenada(x,y)
                 break  # Sale del bucle al recibir un mensaje exitoso
 
@@ -107,10 +106,40 @@ class Dron:
         for msg in consumer:
             if msg.value:
                 mensaje = pickle.loads(msg.value)
-                
                 break  # Sale del bucle al recibir un mensaje exitoso
             
         return mensaje
+            
+            
+    def recibir_motivo_vuelta(self, servidor_kafka, puerto_kafka, hecho):
+        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+
+        topic = "motivo_a_drones_topic"
+        
+        consumer.subscribe([topic])
+        
+        mensaje=""
+        
+        if(hecho==False):
+        
+            for msg in consumer:
+                if msg.value:
+                    mensaje = loads(msg.value.decode('utf-8'))
+                    print("Mensaje: ", mensaje)
+                    if(mensaje=="No tiempo"):
+                        print("No podemos contactar con weather, volvemos a casa")
+                        hecho=True
+                    elif(mensaje=="Mal tiempo"):
+                        print("Volvemos a casa, situaciones climáticas adversas")
+                        hecho=True
+                    elif(mensaje=="Acabado"):
+                        print("Todas las figuras completadas, volvemos a la base")
+                        hecho=True
+                    break
+                
+        return hecho
+                                
+                
     # *Notifica del estado del mapa a los drones
     def enviar_tablero(self, servidor_kafka, puerto_kafka): # !KAFKA
         producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
@@ -145,41 +174,41 @@ class Dron:
         
     # *Función que comunica con el servidor(engine) y hace lo que le mande
     def conectar_verify_engine(self, SERVER_eng, PORT_eng):              
-        #Establece conexión con el servidor (engine)
         try:
             ADDR_eng = (SERVER_eng, PORT_eng)
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR_eng)
-           
-            print (f"Establecida conexión (engine) en [{ADDR_eng}]")          
-            #Una vez establecida la conexión
+        
+            print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
             message = f"{self.alias} {self.id} {self.token}"      
-            self.enviar_mensaje(client , message)
+            self.enviar_mensaje(client, message)
             
-          
             orden = ""
-            #me espero  que me den la orden o ser rechazado
-            while  orden == "":
+            while orden == "":
                 orden = self.receive_message(client)
                 orden_preparada = orden.split(" ")
                 
             if orden == "Rechazado":
                 print("Conexión rechazada por el engine")
                 client.close()
-            elif (orden_preparada[0]=="RUN"):
-               
-                pos_fin = Coordenada(int(orden_preparada[1]),int(orden_preparada[2]))
-                while (self.estado=="Rojo"):
-                    
-                    self.mover(pos_fin)
-                    self.enviar_mensaje(client, self.posicion[0] + " " + self.posicion[1])
+            elif orden_preparada[0] == "RUN":
+                pos_fin = Coordenada(int(orden_preparada[1]), int(orden_preparada[2]))
+                while self.color == "Rojo":
+                    try:
+                        self.mover(pos_fin)
+                        self.enviar_mensaje(client, f"{self.posicion[0]} {self.posicion[1]}")
+                    except (ConnectionResetError, ConnectionAbortedError):
+                        print("Conexión con el servidor perdida.")
+                        break
                 client.send("Vuelvo a base")
-            elif orden=="END":
+            elif orden == "END":
                 client.close()
-        except:
-            print("No se ha podido establecer conexión(engine)")
+        except Exception as e:
+            print(f"No se ha podido establecer conexión (engine): {e}")
+            if 'client' in locals():
+                client.close()
         return client
-        
+    
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
         #Establece conexión con el servidor (engine)
@@ -303,12 +332,13 @@ class Dron:
 
         elif (opc==4):
             
-                cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
-                
-
+                self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                cont=0
+                hecho=False
                 while True:
                     try:
-                        self.recibir_destino_con_timeout("127.0.0.1", 9092,9,cliente)
+                        hecho=self.recibir_motivo_vuelta("127.0.0.1", 9092, hecho)
+                        self.recibir_destino("127.0.0.1", 9092)
                         mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
                         if mapa_actualizado_cuadros != self.mapa.cuadros:
                             self.mapa.cuadros = mapa_actualizado_cuadros
@@ -317,7 +347,7 @@ class Dron:
                             self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
                             print("Destino:", self.destino.x, ",", self.destino.y)
                             print("Posicion:", self.coordenada.x, ",", self.coordenada.y)
-                    except:
+                    except(ConnectionResetError, ConnectionAbortedError):
                         print("Conexión con el servidor perdida.")
                         break
         

@@ -79,6 +79,14 @@ class AD_Engine:
         producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
         
+    def notificar_motivo_vuelta_base(self, servidor_kafka, puerto_kafka, razon):
+        producer =KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
+        topic = "motivo_a_drones_topic"
+        
+        time.sleep(0.3)
+        producer.send(topic, dumps(razon).encode('utf-8'))
+        producer.flush()
+        
     # * Funcion que recibe el destino del dron mediante kafka
     def recibir_posiciones(self, servidor_kafka, puerto_kafka, figura):
         consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka),
@@ -265,6 +273,13 @@ class AD_Engine:
         self.figuras = {figura: {punto: '1,1' for punto in coordenadas} for figura, coordenadas in self.figuras.items()}
         self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
         
+    def figura_completada(self):
+        root = tk.Tk()
+        tablero = Tablero(root, 20, 20)
+        tablero.cuadros=self.mapa.cuadros
+        tablero.mostrar_mensaje("FIGURA COMPLETADA!")
+        tablero.dibujar_tablero()    
+        
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         global CONEX_ACTIVAS
@@ -274,88 +289,99 @@ class AD_Engine:
         
         weather = self.contactar_weather(ip_weather, puerto_weather)
         
-        if(weather!="Fallo"):
-            if(weather>0):
-                for n_fig in range(len(self.figuras)):    
-                    n_fig = n_fig+1
-                    
-                    cont = 1
-                    for clave in self.figuras:
-                        if cont == n_fig:
-                            figura = self.figuras[clave]
-                            break
-                        cont = cont + 1
-                    
-                    if n_fig==1:
-                        n_drones=len(figura)
-                    
-                    #print("Conexiones ", CONEX_ACTIVAS)
-                    #print("N_drones ", n_drones)
+        
+        for n_fig in range(len(self.figuras)):    
+            n_fig = n_fig+1
+            
+            cont = 1
+            for clave in self.figuras:
+                if cont == n_fig:
+                    figura = self.figuras[clave]
+                    break
+                cont = cont + 1
+            
+            if n_fig==1:
+                n_drones=len(figura)
+            
+            #print("Conexiones ", CONEX_ACTIVAS)
+            #print("N_drones ", n_drones)
+
+            if CONEX_ACTIVAS == n_drones:
                 
-                    if CONEX_ACTIVAS == n_drones:
-                        
-                        self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                        self.dibujar_tablero_engine()
-                
-                        salimos = False
-                        while (salimos==False):
-                            self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                            resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
-                            n_drones=n_drones + resta       
-                            CONEX_ACTIVAS = CONEX_ACTIVAS + resta
-                            self.dibujar_tablero_engine()               
-                            salimos = self.acabada_figura(n_fig)
+                self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
+        
+                if(weather!="Fallo"):
+                    if(weather>0):    
                             self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                            
-                        self.figura_completada()
-                            
-                        if (n_fig==len(self.figuras)):
-                            self.volver_a_base(n_fig)
-                            acabamos = False
-                            while (acabamos==False):
-                                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                                resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
-                                n_drones=n_drones + resta 
-                                NEX_ACTIVAS = CONEX_ACTIVAS + resta              
-                                self.dibujar_tablero_engine()               
-                                acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
-                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                        
-                        
-                        weather=self.contactar_weather(ip_weather, puerto_weather)
-                                                
-                        if (weather != "Fallo" and weather<1):
-                            print("Volvemos a casa, situaciones climáticas adversas")
-                            self.volver_a_base(n_fig)
-                            acabamos = False
-                            while (acabamos==False):
+                            self.dibujar_tablero_engine()
+
+                            salimos = False
+                            while (salimos==False):
                                 self.enviar_tablero(self.ip_broker, self.puerto_broker)               
                                 resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
                                 n_drones=n_drones + resta       
-                                CONEX_ACTIVAS = CONEX_ACTIVAS + resta                                
+                                CONEX_ACTIVAS = CONEX_ACTIVAS + resta
                                 self.dibujar_tablero_engine()               
-                                acabamos = self.acabado_espectaculo(n_fig, n_drones)
-                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                            break
+                                salimos = self.acabada_figura(n_fig)
+                                self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
+                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)     
+                                                        
+                            self.figura_completada()
                                 
-                        elif (weather=="Fallo"):
-                            print("No podemos contactar con weather, volvemos a casa")
-                            self.volver_a_base(n_fig)
-                            acabamos = False
-                            while (acabamos==False):
-                                self.enviar_tablero(self.ip_broker, self.puerto_broker)               
-                                resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
-                                n_drones=n_drones + resta       
-                                CONEX_ACTIVAS = CONEX_ACTIVAS + resta                                  
-                                self.dibujar_tablero_engine()               
-                                acabamos = self.acabado_espectaculo(n_fig, n_drones)
-                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                            break
-            else:
-                print("CONDICIONES CLIMATICAS ADVERSAS ESPECTACULO FINALIZADO")
-        else:
-            print("No se puede contactar con weather, no podemos iniciar el vuelo")        
-                
+                            if (n_fig==len(self.figuras)):
+                                self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
+                                self.volver_a_base(n_fig)
+                                acabamos = False
+                                while (acabamos==False):
+                                    self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                                    resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
+                                    n_drones=n_drones + resta 
+                                    NEX_ACTIVAS = CONEX_ACTIVAS + resta              
+                                    self.dibujar_tablero_engine()               
+                                    acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
+                                    self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
+                                    self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)                            
+                            
+                            weather=self.contactar_weather(ip_weather, puerto_weather)
+                                                    
+                            if (weather != "Fallo" and weather<1):
+                                self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
+                                print("Volvemos a casa, situaciones climáticas adversas")
+                                self.volver_a_base(n_fig)
+                                acabamos = False
+                                while (acabamos==False):
+                                    self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                                    resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
+                                    n_drones=n_drones + resta       
+                                    CONEX_ACTIVAS = CONEX_ACTIVAS + resta                                
+                                    self.dibujar_tablero_engine()               
+                                    acabamos = self.acabado_espectaculo(n_fig, n_drones)
+                                    self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
+                                    self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                                break
+                                    
+                            elif (weather=="Fallo"):
+                                self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "No tiempo")
+                                print("No podemos contactar con weather, volvemos a casa")
+                                self.volver_a_base(n_fig)
+                                acabamos = False
+                                while (acabamos==False):
+                                    self.enviar_tablero(self.ip_broker, self.puerto_broker)               
+                                    resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
+                                    n_drones=n_drones + resta       
+                                    CONEX_ACTIVAS = CONEX_ACTIVAS + resta                                  
+                                    self.dibujar_tablero_engine()               
+                                    acabamos = self.acabado_espectaculo(n_fig, n_drones)
+                                    self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "No tiempo")
+                                    self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                                break
+                    else:
+                        print("CONDICIONES CLIMATICAS ADVERSAS ESPECTACULO FINALIZADO")
+                        self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
+                else:
+                    print("No se puede contactar con weather, no podemos iniciar el vuelo") 
+                    self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "No tiempo")
+                    
       
         #conn.close()
 
@@ -384,7 +410,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras.json"
+    fichero="AwD_figuras_correccion.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
