@@ -4,6 +4,10 @@
             "Nombre":"Triangulo",
             "Drones":[{
                 "ID":1,
+                "POS":"4,4"
+                },
+                {
+                "ID":2,
                 "POS":"2,2"
                 },
                 {
