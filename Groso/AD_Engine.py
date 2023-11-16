@@ -308,10 +308,11 @@ class AD_Engine:
 
             if CONEX_ACTIVAS == n_drones:
                 
-                self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
+                
         
                 if(weather!="Fallo"):
-                    if(weather>0):    
+                    if(weather>0):
+                            self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")    
                             self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                             self.dibujar_tablero_engine()
 
