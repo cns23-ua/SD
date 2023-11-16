@@ -243,6 +243,32 @@ class Dron:
         tablero = Tablero(root, 20, 20)
         tablero.cuadros=self.mapa.cuadros
         tablero.dibujar_tablero()
+
+    def mostrar_mapa_terminal_rotado(self, cuadros):
+        for j in range(len(cuadros)):
+            for i in range(len(cuadros)):
+                casilla = cuadros[i][j]
+                if casilla == 0:
+                    print('  .  ', end='')
+                elif isinstance(casilla, tuple):
+                    # Verificar si la casilla contiene un dron
+                    if casilla[1] > 0:
+                        # Mostrar solo el primer dron si hay varios
+                        primer_dron = casilla[0][0]
+                        estado = casilla[2]
+                        if estado == 'green':
+                            print(f'  \033[92m{primer_dron}G\033[0m  ', end='')  # Dron verde
+                        else:
+                            print(f'  \033[91m{primer_dron}R\033[0m  ', end='')  # Dron rojo
+                    else:
+                        print('  .  ', end='')
+                else:
+                    print(f'  {casilla}  ', end='')
+            print()
+
+
+
+
         
 
     # *Menú del dron para interactuar con registry
@@ -361,6 +387,9 @@ class Dron:
                         if mapa_actualizado_cuadros != self.mapa.cuadros:
                             self.mapa.cuadros = mapa_actualizado_cuadros
                             pos_vieja = self.coordenada
+                            
+                            self.mostrar_mapa_terminal_rotado(mapa_actualizado_cuadros)
+                            
                             self.mover(self.destino)
                             self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
                             print("Destino:", self.destino.x, ",", self.destino.y)

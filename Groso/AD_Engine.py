@@ -410,7 +410,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras_correccion.json"
+    fichero="TestFig.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
