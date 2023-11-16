@@ -4,6 +4,7 @@ import json
 import secrets
 import string
 
+#Todo bien deberia funcionar
 
 HEADER = 64
 PORT = 5051
@@ -11,14 +12,16 @@ FORMAT = 'utf-8'
 FIN = "FIN"
 MAX_CONEXIONES = 8
 JSON_FILE = "BD.json"
-SERVER = "127.0.0.1"
+SERVER = "127.0.0.3"
 ADDR = (SERVER, PORT)
 
-def send_message(message_to_send , conn):
-    message_bytes = message_to_send.encode(FORMAT)
-    message_length = len(message_bytes)
-    conn.send(str(message_length).encode(FORMAT))
-    conn.send(message_bytes)
+def send_message(msg , cliente):
+    message = msg.encode(FORMAT)
+    msg_length = len(message)
+    send_length = str(msg_length).encode(FORMAT)
+    send_length += b' ' * (HEADER - len(send_length))
+    cliente.send(send_length)
+    cliente.send(message)
 
 def generate_random_token(length):
     alphabet = string.ascii_letters + string.digits
@@ -66,86 +69,107 @@ def save_drone_info(alias , id , token):
 
 def handle_client(conn, addr):
     print(f"[NUEVA CONEXION] {addr} connected.")
-
+    
     connected = True
-    while connected:
-        opc=0
-        msg_length = conn.recv(HEADER).decode(FORMAT)
-        if msg_length:
-            
-            msg_length = int(msg_length)
-            message = conn.recv(msg_length).decode(FORMAT)
-            
-            alias = message.split()[1]
-            opc = int(message.split()[0])
-           
-           
-           
-            if message == FIN:
-                connected = False
+    try:
+        while connected:
+            opc=0
+            msg_length = conn.recv(HEADER).decode(FORMAT)
+            if msg_length:
                 
-            elif opc == 1:           
-                id = 1
-                token = generate_random_token(64)
-                save_drone_info(alias , id , token)
-                message_to_send = f"{alias} {token}" 
-                send_message(message_to_send,conn)
+                msg_length = int(msg_length)
+                message = conn.recv(msg_length).decode(FORMAT)
                 
-                
-                
-            elif opc == 2:
-                try:
-                    with open(JSON_FILE, "r") as file:
-                        data = json.load(file)
-                except FileNotFoundError:
-                    data = {}  
+                alias = message.split()[1]
+                opc = int(message.split()[0])
+
+
+                if message == FIN:
+                    connected = False
                     
-                if alias in data:
-                    message_to_send = "Dime el nuevo Alias del dron "
-                    send_message(message_to_send,conn)
                     
-                    new_alias = conn.recv(HEADER).decode(FORMAT)
-                    if new_alias:
-                        new_alias = int(new_alias)
-                        new_alias = conn.recv(new_alias).decode(FORMAT)
-                          
-                    data[new_alias] = data.pop(alias)
-                    
-                    with open('BD.json', 'w') as archivo:
-                        json.dump(data, archivo, indent=4)
-                    
-                    message_to_send = "ok"
-                    send_message(message_to_send,conn)
-                else:              
-                    message_to_send = "No existe"
-                    send_message(message_to_send,conn)
-                
-            elif opc==3:
-<<<<<<< HEAD
-                try:
-                    with open(JSON_FILE, "r") as file:
-                        data = json.load(file)
-                except FileNotFoundError:
-                    data = {}
-                
-                message_to_send, success = eliminar_dron_por_nombre(alias, JSON_FILE)
-                
-                if success:
+                elif opc==1:
+                    try:
+                        with open(JSON_FILE, "r") as file:
+                            data = json.load(file)
+                    except FileNotFoundError:
+                        data = {}
+
+                    if not data :
+                        id = 1
+                        
+                    else:
+                    # Encuentra el ID más alto en el JSON
+                        max_id = max(data.values(), key=lambda x: x["id"])["id"]
+                        # Calcula el nuevo ID sumando 1 al ID más alto
+                        id = max_id + 1
+
+                        
+                    token = generate_random_token(64) 
+                    save_drone_info(alias , id , token)
+                    message_to_send = f"{alias} {id} {token}" 
                     send_message(message_to_send, conn)
-                else:
-                    send_message(message_to_send, conn)
+                        
+                        
+                        
+                elif opc == 2:
+                    try:
+                        with open(JSON_FILE, "r") as file:
+                            data = json.load(file)
+                    except FileNotFoundError:
+                        data = {}  
+                        
+                    if alias in data:
+                        message_to_send = "Dime el nuevo Alias del dron "
+                        send_message(message_to_send,conn)
+                        
+                        new_alias = conn.recv(HEADER).decode(FORMAT)
+                        if new_alias:
+                            new_alias = int(new_alias)
+                            new_alias = conn.recv(new_alias).decode(FORMAT)
+                            
+                        data[new_alias] = data.pop(alias)
+                        
+                        with open('BD.json', 'w') as archivo:
+                            json.dump(data, archivo, indent=4)
+                        
+                        message_to_send = "ok"
+                        send_message(message_to_send,conn)
+                    else:              
+                        message_to_send = "No existe"
+                        send_message(message_to_send,conn)
+                        
+                elif opc==3:
+                    try:
+                        with open(JSON_FILE, "r") as file:
+                            data = json.load(file)
+                    except FileNotFoundError:
+                        data = {}
+                    
+                    message_to_send, success = eliminar_dron_por_nombre(alias, JSON_FILE)
+                    
+                    if success:
+                        send_message(message_to_send, conn)
+                    else:
+                        send_message(message_to_send, conn)
                 
-                
-=======
-                print("dfd")
-            
->>>>>>> bec1814f43057ac7e440b09c49a7fb0cb0f2ece4
+                elif opc==4:
+                    conn.close()
+                        
+                        
+    except:
+        conn.close()
     print("ADIOS. TE ESPERO EN OTRA OCASION")
+
     conn.close()
+        
+    
     
         
 
 def start():
+    with open(JSON_FILE, 'w') as archivo:
+        json.dump({}, archivo)
     server.listen()
     print(f"[LISTENING] Servidor a la escucha en {SERVER}")
     CONEX_ACTIVAS = threading.active_count()-1
