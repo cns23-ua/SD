@@ -245,6 +245,9 @@ class Dron:
         tablero.dibujar_tablero()
 
     def mostrar_mapa_terminal_rotado(self, cuadros):
+        
+
+        completado = True
         for j in range(len(cuadros)):
             for i in range(len(cuadros)):
                 casilla = cuadros[i][j]
@@ -259,12 +262,17 @@ class Dron:
                         if estado == 'green':
                             print(f'  \033[92m{primer_dron}G\033[0m  ', end='')  # Dron verde
                         else:
+                            completado = False
                             print(f'  \033[91m{primer_dron}R\033[0m  ', end='')  # Dron rojo
                     else:
                         print('  .  ', end='')
                 else:
                     print(f'  {casilla}  ', end='')
             print()
+
+        if completado:
+            print("\n¡Figura completada!\n")
+
 
 
 
