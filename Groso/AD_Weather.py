@@ -1,38 +1,56 @@
 import socket
+import sys
+import json
+import random
 
-def weather_server(port):
-    # Crea un socket TCP/IP
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # socket de flujo , es decir, bidireccional
+HEADER = 64
+FORMAT = 'utf-8'
+SERVER = "127.0.0.5"
 
-    # Enlaza el socket al puerto especificado
-    server_address = ('localhost', port)
-    server_socket.bind(server_address)
+class AD_Weather:
+    def __init__(self, puerto, ciudades):
+        self.puerto = puerto
+        self.ciudades = ciudades
 
-    # Escucha por conexiones entrantes
-    server_socket.listen(1)
-    print(f"Servidor de clima escuchando en el puerto {port}...")
+    def obtener_temperatura(self, ciudad):
+        return self.ciudades[ciudad]
+    
+    def enviar_mensaje(self, cliente, msg): 
+        message = msg.encode(FORMAT)
+        msg_length = len(message)
+        send_length = str(msg_length).encode(FORMAT)
+        send_length += b' ' * (HEADER - len(send_length))
+        cliente.send(send_length)
+        cliente.send(message)
 
-    try:
+    def iniciar_servidor(self):
+        servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        servidor.bind((SERVER, self.puerto))
+        servidor.listen()
+
+        print(f"Servidor de clima escuchando en el puerto {self.puerto}")
+
         while True:
-            # Espera una conexión entrante
-            print("Esperando una conexión...")
-            client_socket, client_address = server_socket.accept()
-            print(f"Conexión aceptada desde {client_address}")
+            conn, addr = servidor.accept()
+            print(f"Conexión establecida desde {addr}")
 
-            # Aquí debes implementar la lógica para manejar las solicitudes del cliente.
-            # Recibir y procesar las solicitudes, buscar la temperatura y enviarla de vuelta.
+            ciudad = ""
+            while ciudad == "":
+                long = conn.recv(HEADER).decode(FORMAT)
+                if long:
+                    long = int(long)
+                    ciudad = conn.recv(long).decode(FORMAT) 
 
-            # Cierra la conexión con el cliente
-            client_socket.close()
-    except KeyboardInterrupt:
-        print("Servidor de clima detenido.")
+            # Cargar el archivo JSON
+            with open(self.ciudades) as file:
+                datos = json.load(file)
 
-if __name__ == "__main__":
-    import sys
+            temperatura = str(datos[ciudad])
+            self.enviar_mensaje(conn, temperatura)
 
-    if len(sys.argv) != 2:
-        print("Uso: python AD_Weather.py <puerto>")
-        sys.exit(1)
 
-    port = int(sys.argv[1])
-    weather_server(port)
+if (len(sys.argv) == 3):
+    puerto = int(sys.argv[1])
+    fichero = sys.argv[2]
+    weather_server = AD_Weather(puerto, fichero)
+    weather_server.iniciar_servidor()
