@@ -277,9 +277,18 @@ class AD_Engine:
         tablero.cuadros=self.mapa.cuadros
         tablero.dibujar_tablero()
 
-    def obtener_temperatura(self, ciudad, api_key):
+    def obtener_temperatura(self, api_key):
+        ciudad = ""
+        # Cargar el archivo JSON
+        with open("ciudades.json") as file:
+            datos = json.load(file)
+
+        ciudad = str(datos["ciudad"])
+        print("Ciudad: ", ciudad)
+        
         url = f'http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={api_key}&units=metric'
         # 'units=metric' para obtener la temperatura en grados Celsius
+
 
         response = requests.get(url)
         if response.status_code == 200:
@@ -299,7 +308,7 @@ class AD_Engine:
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
         #weather = self.contactar_weather(ip_weather, puerto_weather)
-        weather = self.obtener_temperatura("London", "73d22518c7b690c635b670eb9a918309")
+        weather = self.obtener_temperatura("73d22518c7b690c635b670eb9a918309")
         
         for n_fig in range(len(self.figuras)):    
             n_fig = n_fig+1
@@ -335,7 +344,7 @@ class AD_Engine:
                                 salimos = self.acabada_figura(n_fig)
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
                                 self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
-                                weather = self.obtener_temperatura("London", "73d22518c7b690c635b670eb9a918309")
+                                weather = self.obtener_temperatura("73d22518c7b690c635b670eb9a918309")
                                 if(weather=="Fallo" or weather<=0):
                                     break
                                              
@@ -422,7 +431,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras_correccion.json"
+    fichero="TestFig.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
