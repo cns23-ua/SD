@@ -15,6 +15,7 @@ import pickle
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from json import loads
+import requests
 
 HEADER = 64 
 FORMAT = 'utf-8'
@@ -142,10 +143,7 @@ class AD_Engine:
     # *Acaba con la acción
     def stop(self):
         Hay_que_rellenar = "Hay que rellenar"
-        
-        
     
-        
             
     # *Función que comunica con el servidor(engine) y hace lo que le mande
     def contactar_weather(self, ip_weather, port_weather):              
@@ -279,7 +277,20 @@ class AD_Engine:
         tablero.cuadros=self.mapa.cuadros
         tablero.dibujar_tablero()
 
-        
+    def obtener_temperatura(self, ciudad, api_key):
+        url = f'http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={api_key}&units=metric'
+        # 'units=metric' para obtener la temperatura en grados Celsius
+
+        response = requests.get(url)
+        if response.status_code == 200:
+            datos_clima = response.json()
+            temperatura = datos_clima['main']['temp']
+            print("Esta es la temperatura:",temperatura)
+            return temperatura
+        else:
+            print("Error al obtener la temperatura:", response.status_code)
+            return "Fallo"
+            
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         global CONEX_ACTIVAS
@@ -287,8 +298,8 @@ class AD_Engine:
         self.autenticar_dron(conn)
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
-        weather = self.contactar_weather(ip_weather, puerto_weather)
-        
+        #weather = self.contactar_weather(ip_weather, puerto_weather)
+        weather = self.obtener_temperatura("London", "73d22518c7b690c635b670eb9a918309")
         
         for n_fig in range(len(self.figuras)):    
             n_fig = n_fig+1
@@ -308,8 +319,6 @@ class AD_Engine:
 
             if CONEX_ACTIVAS == n_drones:
                 
-                
-        
                 if(weather!="Fallo"):
                     if(weather>0):
                             self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")    
@@ -325,9 +334,13 @@ class AD_Engine:
                                 self.dibujar_tablero_engine()               
                                 salimos = self.acabada_figura(n_fig)
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
-                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)     
-                                                        
-                            self.figura_completada()
+                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                                weather = self.obtener_temperatura("London", "73d22518c7b690c635b670eb9a918309")
+                                if(weather=="Fallo" or weather<=0):
+                                    break
+                                             
+                            if(salimos==True):           
+                                self.figura_completada()
                                 
                             if (n_fig==len(self.figuras)):
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
@@ -342,9 +355,7 @@ class AD_Engine:
                                     acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
                                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
                                     self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)                            
-                            
-                            weather=self.contactar_weather(ip_weather, puerto_weather)
-                                                    
+                                                                                
                             if (weather != "Fallo" and weather<1):
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
                                 print("Volvemos a casa, situaciones climáticas adversas")
