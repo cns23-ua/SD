@@ -15,7 +15,7 @@ import pickle
 #Consumidor.
 from kafka import KafkaConsumer
 from json import loads
-from confluent_kafka import KafkaError , Consumer
+from confluent_kafka import KafkaException, KafkaError
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -78,24 +78,39 @@ class Dron:
     # !Kafka:
     
     # * Funcion que recibe el destino del dron mediante kafka
-    def recibir_destino(self, servidor_kafka, puerto_kafka):
-        consumer = KafkaConsumer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
-
+    def recibir_destino(self, servidor_kafka, puerto_kafka, timeout_segundos,cliente):
+        consumer = KafkaConsumer(bootstrap_servers=f"{servidor_kafka}:{puerto_kafka}")
         topic = "destinos_a_drones_topic"
-        
         consumer.subscribe([topic])
-        
-        for msg in consumer:
-            if msg.value:
-                mensaje = loads(msg.value.decode('utf-8'))
-               
+
+        fallo = False
+        mensaje = None
+
+        try:
+            # Configurar el temporizador para esperar el mensaje
+            msg = consumer.poll(timeout_ms=timeout_segundos * 1000)
+
+            if msg:
+                mensaje = loads(next(iter(msg.values()))[0].value.decode('utf-8'))
                 self.destino = eval(mensaje)[self.id]
+                x, y = map(int, self.destino.split(","))
+                if((x > 20 or x < 1) or (y > 20 or y < 1)):
+                    print("mi posicion no es valida me voy del espectaculo")
+                    cliente.close()
+                    fallo = True
+                self.destino = Coordenada(x, y)
+            else:
+                print("Error: No se pudo recibir el destino. El engine no está operativo.")
+                # Aquí puedes agregar código para manejar la falta de mensaje, por ejemplo, lanzar una excepción.
+                cliente.close()
+
+        except KafkaException as e:
+            if isinstance(e, KafkaError) and e.args[0].code() == KafkaError._TIMED_OUT:
+                print("Error: Se agotó el tiempo de espera. El engine no está operativo.")
                 
-                x = int(self.destino.split(",")[0])
-                y = int(self.destino.split(",")[1])
-                self.destino = Coordenada(x,y)
-                break  # Sale del bucle al recibir un mensaje exitoso
-    
+            cliente.close()
+            
+        return fallo
 
     # * Función para recibir el mapa
     def recibir_mapa(self, servidor_kafka, puerto_kafka):
@@ -228,6 +243,40 @@ class Dron:
         tablero = Tablero(root, 20, 20)
         tablero.cuadros=self.mapa.cuadros
         tablero.dibujar_tablero()
+
+    def mostrar_mapa_terminal_rotado(self, cuadros):
+        
+
+        completado = True
+        for j in range(len(cuadros)):
+            for i in range(len(cuadros)):
+                casilla = cuadros[i][j]
+                if casilla == 0:
+                    print('  .  ', end='')
+                elif isinstance(casilla, tuple):
+                    # Verificar si la casilla contiene un dron
+                    if casilla[1] > 0:
+                        # Mostrar solo el primer dron si hay varios
+                        primer_dron = casilla[0][0]
+                        estado = casilla[2]
+                        if estado == 'green':
+                            print(f'  \033[92m{primer_dron}G\033[0m  ', end='')  # Dron verde
+                        else:
+                            completado = False
+                            print(f'  \033[91m{primer_dron}R\033[0m  ', end='')  # Dron rojo
+                    else:
+                        print('  .  ', end='')
+                else:
+                    print(f'  {casilla}  ', end='')
+            print()
+
+        if completado:
+            print("\n¡Figura completada!\n")
+
+
+
+
+
         
 
     # *Menú del dron para interactuar con registry
@@ -334,17 +383,21 @@ class Dron:
 
         elif (opc==4):
             
-                self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
                 cont=0
                 hecho=False
                 while True:
                     try:
                         hecho=self.recibir_motivo_vuelta("127.0.0.1", 9092, hecho)
-                        self.recibir_destino("127.0.0.1", 9092)
+                        if (self.recibir_destino("127.0.0.1", 9092,6,cliente)):
+                            break
                         mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
                         if mapa_actualizado_cuadros != self.mapa.cuadros:
                             self.mapa.cuadros = mapa_actualizado_cuadros
                             pos_vieja = self.coordenada
+                            
+                            self.mostrar_mapa_terminal_rotado(mapa_actualizado_cuadros)
+                            
                             self.mover(self.destino)
                             self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
                             print("Destino:", self.destino.x, ",", self.destino.y)
