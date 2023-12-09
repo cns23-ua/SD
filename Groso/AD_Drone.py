@@ -16,6 +16,7 @@ import pickle
 from kafka import KafkaConsumer
 from json import loads
 from confluent_kafka import KafkaException, KafkaError
+import requests
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -31,6 +32,7 @@ class Dron:
         self.token = ""
         self.destino = ""
         self.mapa = Tablero(tk.Tk(),20,20)
+        self.url_api = "https://localhost:3000"
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
@@ -275,13 +277,24 @@ class Dron:
 
 
 
+    def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
+        print("Bienvenido al menú:")
+        print("1. Registro Clásico")
+        print("2. API")
+        opcion = input("Elige una opción (1/2): ")
 
+        if opcion == "1":
+            print("Has seleccionado Registro Clásico")
+            self.menu_clasico(server_reg, port_reg, cliente , SERVER_eng , PORT_eng)
+        elif opcion == "2":
+            print("Has seleccionado API")
+            self.menu_nuevo(server_reg, port_reg, cliente , SERVER_eng , PORT_eng)
+        else:
+            print("Opción inválida. Por favor, elige 1 o 2.")
 
-        
 
     # *Menú del dron para interactuar con registry
-    def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
-        
+    def menu_clasico(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
         token=""
         opc = 0
         
@@ -321,11 +334,7 @@ class Dron:
                 self.id=int(token_manejable[1])
                 self.token=token_manejable[2]
 
-                
-                
-                
-        elif (opc==2):
-                      
+        elif (opc==2):   
                 print("Dime el Alias del dron que quieres modificar")
                 alias = sys.stdin.readline()
                 
@@ -382,7 +391,146 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
+                cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                cont=0
+                hecho=False
+                while True:
+                    try:
+                        hecho=self.recibir_motivo_vuelta("127.0.0.1", 9092, hecho)
+                        if (self.recibir_destino("127.0.0.1", 9092,6,cliente)):
+                            break
+                        mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                        if mapa_actualizado_cuadros != self.mapa.cuadros:
+                            self.mapa.cuadros = mapa_actualizado_cuadros
+                            pos_vieja = self.coordenada
+                            
+                            self.mostrar_mapa_terminal_rotado(mapa_actualizado_cuadros)
+                            
+                            self.mover(self.destino)
+                            self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+                            print("Destino:", self.destino.x, ",", self.destino.y)
+                            print("Posicion:", self.coordenada.x, ",", self.coordenada.y)
+                    except(ConnectionResetError, ConnectionAbortedError):
+                        print("Conexión con el servidor perdida.")
+                        break
+        if(opc!=5):
+            self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
             
+    def listar_drones_api(self):
+        url = f"{self.url_api}/listar_drones"  
+
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                print("Lista de drones:")
+                for drone in data:
+                    print(f"Alias: {drone['alias']}, ID: {drone['id']}, Token: {drone['token']}")
+            else:
+                print(f"Error al obtener la lista de drones. Código de estado: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"Error de conexión: {e}")
+            
+    def agregar_dron_api(self, alias):
+        drones = self.listar_drones_api()
+        
+        # Verificar si el alias ya existe en la lista de drones
+        if alias in drones:
+            print(f"Error: El alias '{alias}' ya existe en la lista de drones.")
+            return
+        
+        # Si el alias no existe, realizar la solicitud para agregar el dron
+        url = f"{self.url_api}/agregar_dron"  # Reemplaza 'URL_DE_TU_API' con la URL correcta de tu API
+        data = {'alias': alias}
+
+        try:
+            response = requests.post(url, json=data)
+            if response.status_code == 201:
+                print(f"Dron con alias '{alias}' agregado correctamente.")
+                # Obtener el ID asignado al dron recién agregado y guardar en self.id
+                nuevo_dron = self.listar_drones_api().get(alias)
+                if nuevo_dron:
+                    self.alias = alias
+                    self.id = nuevo_dron.get('id')
+                    print(f"ID asignado al dron '{alias}': {self.id}")
+            else:
+                print(f"Error al agregar el dron. Código de estado: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"Error de conexión: {e}")
+            
+    def modificar_dron_api(self):
+        drones = self.listar_drones_api()
+        
+        # Verificar si el alias existe en la lista de drones
+        if self.alias not in drones:
+            print(f"Error: No estás registrado")
+            return
+        
+        # Realizar la solicitud para modificar el dron
+        url = f"{self.url_api}/modificar_dron/{self.id}"
+        nuevo_alias = sys.stdin.readline()
+        data = {'alias': nuevo_alias}
+
+        try:
+            response = requests.put(url, json=data)
+            if response.status_code == 200:
+                print(f"Alias modificado correctamente. Nuevo alias: '{nuevo_alias}'")
+            else:
+                print(f"Error al modificar el dron. Código de estado: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"Error de conexión: {e}")
+            
+    # *Menú del dron para interactuar con registry
+    def menu_nuevo(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
+        token=""
+        opc = 0
+        
+        while(opc>4 or opc<1):
+            print("\nHola, soy un dron, qué operación desea realizar?")
+            print("[1] Dar de alta")
+            print("[2] Editar perfil")
+            print("[3] Dar de baja")
+            print("[4] Añadir al espectaculo")
+            print("[5] Desconectar")
+            
+            opc=int(sys.stdin.readline())
+            
+            if(opc<1 or opc>5):
+                print("Opción no válida, inténtelo de nuevo")
+        
+        if (opc==1):
+            alias = ""
+            print("\nIntroduce mi alias")
+            alias = sys.stdin.readline()
+            #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
+            self.agregar_dron_api(alias)
+                 
+        elif (opc==2):      
+            self.modificar_dron_api()
+                       
+        elif (opc==3):
+            print("Introduce el alias del dron que quieres eliminar")
+            alias = sys.stdin.readline()
+            #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
+            message = f"{opc} {alias}"
+            self.enviar_mensaje(cliente, message)
+            
+            print("soy el cliente")
+            
+            message = cliente.recv(HEADER).decode(FORMAT)
+            message = int(message)
+            message = cliente.recv(message).decode(FORMAT)
+            
+            if(message == "ok"):
+                print("El dron ", alias , " se ha eliminado con exito")
+            else:
+                print("No se ha encontrado al dron ", alias , " en la base de datos ")
+                        
+        elif (opc==5):
+            cliente.close()
+            sys.exit(1)
+
+        elif (opc==4):
                 cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
                 cont=0
                 hecho=False

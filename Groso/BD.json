@@ -1,6 +1,8 @@
 {
-    "a": {
-        "id": 1,
-        "token": "xKBycvk9O0FWG12ZCkLlx0wv4QIqpWlS4bpH54nhOhOlPFh1LP7nQ7RaVq62n6VI"
-    }
+  "a": {
+    "id": 1
+  },
+  "b": {
+    "id": 2
+  }
 }

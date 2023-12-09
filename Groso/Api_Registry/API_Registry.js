@@ -8,7 +8,7 @@ const { v4: uuidv4 } = require('uuid');
 class Registry {
     constructor() {
         this.registryData = {};
-        this.fileName = 'registro_drones.json';
+        this.fileName = '/home/lpv24/Escritorio/SD/SD/Groso/BD.json';
     }
 
     // Función para obtener el próximo ID basado en la cantidad de drones en el registro
@@ -163,6 +163,26 @@ router.put('/generar_token/:alias', (req, res) => {
 
     res.json({ message: "Token generado correctamente", drone: resultado });
 });
+
+router.put('/borrar_token/:alias', (req, res) => {
+    const { alias } = req.params;
+
+    if (!alias) {
+        return res.status(400).json({ error: "Falta el alias del dron" });
+    }
+
+    if (!registry.registryData[alias]) {
+        return res.status(404).json({ error: "No se encontró el dron con el alias proporcionado" });
+    }
+
+    // Eliminar el atributo token del dron
+    delete registry.registryData[alias].token;
+
+    registry.guardarRegistro();
+
+    res.json({ message: `Token eliminado del dron '${alias}'` });
+});
+
 
 router.delete('/borrar_todo', (req, res) => {
     registry.reiniciarRegistro();
