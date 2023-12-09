@@ -16,6 +16,7 @@ from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from json import loads
 import requests
+import ssl
 
 HEADER = 64 
 FORMAT = 'utf-8'
@@ -23,6 +24,7 @@ FIN = "FIN"
 JSON_FILE = "BD.json"
 SERVER = "127.0.0.2"
 CONEX_ACTIVAS = 0
+CERT = 'certServ.pem' 
 
 
 class AD_Engine:
@@ -41,13 +43,9 @@ class AD_Engine:
         self.ciudad = "Marvella"
         
     # * Funcion que envia un mensaje al servidor
-    def enviar_mensaje(self, cliente, msg): 
-        message = msg.encode(FORMAT)
-        msg_length = len(message)
-        send_length = str(msg_length).encode(FORMAT)
-        send_length += b' ' * (HEADER - len(send_length))
-        cliente.send(send_length)
-        cliente.send(message)
+    def enviar_mensaje(self, connstream, msg): 
+        mensaje_bytes = msg.encode('utf-8')
+        connstream.send(mensaje_bytes)
         
     
     # *Notifica del estado del mapa a los drones
@@ -196,35 +194,42 @@ class AD_Engine:
         self.figuras = figuras
         
     # *Autentica si el dron está registrado
-    def autenticar_dron(self, conn):
+    def autenticar_dron(self, connstream):
+        
+        messag = connstream.recv(1024)
+        message = messag.decode('utf-8')
+        """ practica 1
         msg_length = conn.recv(HEADER).decode(FORMAT)
         if msg_length:
             msg_length = int(msg_length)
             message = conn.recv(msg_length).decode(FORMAT)
+            """
+            
+            
             #Spliteamos el mensaje en alias y token y leemos el json
-            alias = message.split()[0]
-            id = int(message.split()[1])
-            token = message.split()[2]  
+        alias = message.split()[0]
+        id = int(message.split()[1])
+        token = message.split()[2]  
 
 
-            try:
-                with open(JSON_FILE, "r") as file:
-                    data = json.load(file)
-            except FileNotFoundError:
-                print("No se encontró el archivo")
-                data = {}  
-   
-            # Comprobamos que el alias y el token están en el json
-            for clave, valor in data.items():
-                if "token" in valor and valor["token"] == token:
-                    message_to_send = "Dron verificado"
-                    self.enviar_mensaje(conn, message_to_send)
-                    self.drones.append(int(id))
-                    return True
-            else:
-                message_to_send = "Rechazado"
-                self.enviar_mensaje(conn, message_to_send)
-                return False
+        try:
+            with open(JSON_FILE, "r") as file:
+                data = json.load(file)
+        except FileNotFoundError:
+            print("No se encontró el archivo")
+            data = {}  
+
+        # Comprobamos que el alias y el token están en el json
+        for clave, valor in data.items():
+            if "token" in valor and valor["token"] == token:
+                message_to_send = "Dron verificado"
+                self.enviar_mensaje(connstream, message_to_send)
+                self.drones.append(int(id))
+                return True
+        else:
+            message_to_send = "Rechazado"
+            self.enviar_mensaje(connstream, message_to_send)
+            return False
             
     def dibujar_tablero_engine(self):
         root = tk.Tk()
@@ -300,11 +305,11 @@ class AD_Engine:
             print("Error al obtener la temperatura:", response.status_code)
             return "Fallo"
             
-    def handle_client(self, conn, addr):
+    def handle_client(self, connstream, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         global CONEX_ACTIVAS
         CONEX_ACTIVAS = CONEX_ACTIVAS + 1
-        self.autenticar_dron(conn)
+        self.autenticar_dron(connstream)
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
         #weather = self.contactar_weather(ip_weather, puerto_weather)
@@ -406,16 +411,23 @@ class AD_Engine:
       
         #conn.close()
 
-
     def start(self):
-        server.listen()
-        print(f"[LISTENING] Servidor a la escucha en {SERVER}")
+        
+        #Este es de la practica 1
+        #server.listen()
+        #practica 2
+        bindsocket.listen(MAX_CONEXIONES)
+        print(f"Escuchando en {SERVER} {puerto_escucha}" )
+        
+        
         CONEX_ACTIVAS = threading.active_count()-1
         print(CONEX_ACTIVAS)
         while True:
-            conn, addr = server.accept()
+            newsocket, fromaddr = bindsocket.accept()
+            connstream = context.wrap_socket(newsocket,server_side=True)
+            #conn, addr = server.accept()
             if (CONEX_ACTIVAS <= MAX_CONEXIONES): 
-                thread = threading.Thread(target= self.handle_client, args=(conn, addr))
+                thread = threading.Thread(target= self.handle_client, args=(connstream, fromaddr))
                 thread.start()
                                
                 
@@ -423,8 +435,8 @@ class AD_Engine:
                 print("CONEXIONES RESTANTES PARA CERRAR EL SERVICIO", MAX_CONEXIONES-CONEX_ACTIVAS)
             else:
                 print("OOppsss... DEMASIADAS CONEXIONES. ESPERANDO A QUE ALGUIEN SE VAYA")
-                conn.send("OOppsss... DEMASIADAS CONEXIONES. Tendrás que esperar a que alguien se vaya".encode(FORMAT))
-                conn.close()
+                connstream.shutdown(socket.SHUT_RDWR)
+                connstream.close()
                 CONEX_ACTUALES = threading.active_count()-1
         
 
@@ -442,9 +454,17 @@ if (len(sys.argv) == 7):
     
     ADDR = (SERVER, puerto_escucha) 
     print("[STARTING] Servidor inicializándose...")
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(ADDR)
+    """server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(ADDR)"""
+    
+    #ESTO ES DE LA PRACTICA 2 LOS SSL DE SOCKET
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(CERT,CERT)
+    bindsocket = socket.socket()
+    bindsocket.bind((SERVER ,puerto_escucha))
     MAX_CONEXIONES = max_drones
+    
+    
     engine = AD_Engine(puerto_escucha, max_drones, ip_broker , puerto_broker, ip_weather, puerto_weather)
     engine.procesar_fichero(fichero)
     if fichero != "":   

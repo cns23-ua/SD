@@ -16,6 +16,7 @@ import pickle
 from kafka import KafkaConsumer
 from json import loads
 from confluent_kafka import KafkaException, KafkaError
+import ssl
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -45,6 +46,10 @@ class Dron:
             message = client.recv(msg_length).decode(FORMAT)
 
         return message
+    
+    def  receive_message_ssl(self,ssock):
+        data = ssock.recv(1024)
+        return data.decode('utf-8')
         
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
@@ -71,10 +76,7 @@ class Dron:
                     anterior = distancia
                     resul.x =optima[0]  # Actualiza el resultado como una Coordenada
                     resul.y =optima[1]
-        return resul
-
-
-    
+        return resul  
     # !Kafka:
     
     # * Funcion que recibe el destino del dron mediante kafka
@@ -180,7 +182,12 @@ class Dron:
         producer.flush()
     
     # * Funcion que envia un mensaje al servidor
-    def enviar_mensaje(self, cliente, msg): 
+    def enviar_mensaje_ssl(self, cliente, msg): 
+        mensaje_bytes = msg.encode('utf-8')
+        cliente.send(mensaje_bytes)
+        
+        
+    def enviar_mensaje(self ,cliente , msg):
         message = msg.encode(FORMAT)
         msg_length = len(message)
         send_length = str(msg_length).encode(FORMAT)
@@ -188,44 +195,7 @@ class Dron:
         cliente.send(send_length)
         cliente.send(message)
     
-        
-    # *Función que comunica con el servidor(engine) y hace lo que le mande
-    def conectar_verify_engine(self, SERVER_eng, PORT_eng):              
-        try:
-            ADDR_eng = (SERVER_eng, PORT_eng)
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(ADDR_eng)
-        
-            print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
-            message = f"{self.alias} {self.id} {self.token}"      
-            self.enviar_mensaje(client, message)
-            
-            orden = ""
-            while orden == "":
-                orden = self.receive_message(client)
-                orden_preparada = orden.split(" ")
-                
-            if orden == "Rechazado":
-                print("Conexión rechazada por el engine")
-                client.close()
-            elif orden_preparada[0] == "RUN":
-                pos_fin = Coordenada(int(orden_preparada[1]), int(orden_preparada[2]))
-                while self.color == "Rojo":
-                    try:
-                        self.mover(pos_fin)
-                        self.enviar_mensaje(client, f"{self.posicion[0]} {self.posicion[1]}")
-                    except (ConnectionResetError, ConnectionAbortedError):
-                        print("Conexión con el servidor perdida.")
-                        break
-                client.send("Vuelvo a base")
-            elif orden == "END":
-                client.close()
-        except Exception as e:
-            print(f"No se ha podido establecer conexión (engine): {e}")
-            if 'client' in locals():
-                client.close()
-        return client
-    
+
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
         #Establece conexión con el servidor (engine)
@@ -304,13 +274,22 @@ class Dron:
                 alias = sys.stdin.readline()
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"
+   
+                
                 self.enviar_mensaje(cliente, message)
+                
+          
                 #Hemos enviado los datos y esperamos respuesta con nuestro token 
                 token =""              
+                
+            
                 msg_length = cliente.recv(HEADER).decode(FORMAT)
                 if msg_length:
                     msg_length = int(msg_length)
                     token = cliente.recv(msg_length).decode(FORMAT)
+                
+               
+                
                 
                     #token = self.receive_message(cliente)   
                                                
@@ -332,6 +311,8 @@ class Dron:
                 #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
                 message = f"{opc} {alias}"      
                 self.enviar_mensaje(cliente, message)
+                
+                
                 
                 #Hemos enviado los datos y esperamos respuesta de si podemos editar              
                 edit = ""           
@@ -381,31 +362,75 @@ class Dron:
             cliente.close()
             sys.exit(1)
 
-        elif (opc==4):
-            
-                cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
-                cont=0
-                hecho=False
-                while True:
-                    try:
-                        hecho=self.recibir_motivo_vuelta("127.0.0.1", 9092, hecho)
-                        if (self.recibir_destino("127.0.0.1", 9092,6,cliente)):
-                            break
-                        mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
-                        if mapa_actualizado_cuadros != self.mapa.cuadros:
-                            self.mapa.cuadros = mapa_actualizado_cuadros
-                            pos_vieja = self.coordenada
+        elif (opc==4):             
+            try:
+                ADDR_eng = (SERVER_eng, PORT_eng)
+                """
+                client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client.connect(ADDR_eng)
+                """
+                
+                #Practica 2
+                context = ssl._create_unverified_context()
+                with socket.create_connection(ADDR_eng) as sock:
+                    with context.wrap_socket(sock,server_hostname=SERVER_eng)as ssock:
+                    
+                        print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
+                        message = f"{self.alias} {self.id} {self.token}"  
                             
-                            self.mostrar_mapa_terminal_rotado(mapa_actualizado_cuadros)
+                        
+                        self.enviar_mensaje_ssl(ssock, message)
+                        
+                        
+                        orden = ""
+                        while orden == "":
+                            print("1" , message) 
+                            orden = self.receive_message_ssl(ssock)
+                            print("2" , orden) 
+                            orden_preparada = orden.split(" ")
                             
-                            self.mover(self.destino)
-                            self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
-                            print("Destino:", self.destino.x, ",", self.destino.y)
-                            print("Posicion:", self.coordenada.x, ",", self.coordenada.y)
-                    except(ConnectionResetError, ConnectionAbortedError):
-                        print("Conexión con el servidor perdida.")
-                        break
-        
+                            
+                        
+                        if orden == "Rechazado":
+                            print("Conexión rechazada por el engine")
+                            ssock.close()
+                        elif orden_preparada[0] == "RUN":
+                            pos_fin = Coordenada(int(orden_preparada[1]), int(orden_preparada[2]))
+                            while self.color == "Rojo":
+                                try:
+                                    self.mover(pos_fin)
+                                    self.enviar_mensaje_ssl(ssock, f"{self.posicion[0]} {self.posicion[1]}")
+                                except (ConnectionResetError, ConnectionAbortedError):
+                                    print("Conexión con el servidor perdida.")
+                                    break
+                            ssock.send("Vuelvo a base")
+                        elif orden == "END":
+                            ssock.close()
+                            
+                        
+                        hecho=False
+                        while True:
+                            try:
+                                hecho=self.recibir_motivo_vuelta("127.0.0.1", 9092, hecho)
+                                if (self.recibir_destino("127.0.0.1", 9092,6,cliente)):
+                                    break
+                                mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                                if mapa_actualizado_cuadros != self.mapa.cuadros:
+                                    self.mapa.cuadros = mapa_actualizado_cuadros
+                                    pos_vieja = self.coordenada
+                                    
+                                    self.mostrar_mapa_terminal_rotado(mapa_actualizado_cuadros)
+                                    
+                                    self.mover(self.destino)
+                                    self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+                                    print("Destino:", self.destino.x, ",", self.destino.y)
+                                    print("Posicion:", self.coordenada.x, ",", self.coordenada.y)
+                            except(ConnectionResetError, ConnectionAbortedError):
+                                print("Conexión con el servidor perdida.")
+                                break
+            except Exception as e:
+                print(f"No se ha podido establecer conexión (engine): {e}")
+                       
         if(opc!=5):
             self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
 
