@@ -17,6 +17,11 @@ from kafka import KafkaConsumer
 from json import loads
 from confluent_kafka import KafkaException, KafkaError
 import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# Desactivar las advertencias de solicitud no segura debido a certificados autofirmados
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -281,12 +286,12 @@ class Dron:
         print("Bienvenido al menú:")
         print("1. Registro Clásico")
         print("2. API")
-        opcion = input("Elige una opción (1/2): ")
+        opcion = int(sys.stdin.readline())
 
-        if opcion == "1":
+        if opcion == 1:
             print("Has seleccionado Registro Clásico")
             self.menu_clasico(server_reg, port_reg, cliente , SERVER_eng , PORT_eng)
-        elif opcion == "2":
+        elif opcion == 2:
             print("Has seleccionado API")
             self.menu_nuevo(server_reg, port_reg, cliente , SERVER_eng , PORT_eng)
         else:
@@ -417,42 +422,45 @@ class Dron:
             self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
             
     def listar_drones_api(self):
-        url = f"{self.url_api}/listar_drones"  
-
+        url = f"{self.url_api}/listar_drones"  # Reemplaza 'URL_DE_TU_API' con la URL correcta de tu API
+        
         try:
-            response = requests.get(url)
+            response = requests.get(url, verify=False)
             if response.status_code == 200:
-                data = response.json()
-                print("Lista de drones:")
-                for drone in data:
-                    print(f"Alias: {drone['alias']}, ID: {drone['id']}, Token: {drone['token']}")
+                drones = response.json()
+                return drones  # Devolver los datos de los drones
             else:
-                print(f"Error al obtener la lista de drones. Código de estado: {response.status_code}")
+                print("Error al obtener la lista de drones.")
+                return {}  # Devolver un diccionario vacío en caso de error
         except requests.RequestException as e:
             print(f"Error de conexión: {e}")
+            return {}  # Devolver un diccionario vacío en caso de error
             
     def agregar_dron_api(self, alias):
         drones = self.listar_drones_api()
-        
-        # Verificar si el alias ya existe en la lista de drones
-        if alias in drones:
-            print(f"Error: El alias '{alias}' ya existe en la lista de drones.")
-            return
+        if drones != None:
+            # Verificar si el alias ya existe en la lista de drones
+            for dron in drones:
+                if dron.get('alias') == str(alias).strip():
+                    print("Ya hay un dron que tiene este alias")
+                    return
         
         # Si el alias no existe, realizar la solicitud para agregar el dron
         url = f"{self.url_api}/agregar_dron"  # Reemplaza 'URL_DE_TU_API' con la URL correcta de tu API
-        data = {'alias': alias}
+        data = {"alias": str(alias).strip()}
 
         try:
-            response = requests.post(url, json=data)
+            response = requests.post(url, json=data, verify=False)
             if response.status_code == 201:
-                print(f"Dron con alias '{alias}' agregado correctamente.")
+                print(f"Dron con alias '{str(alias).strip()}' agregado correctamente.")
                 # Obtener el ID asignado al dron recién agregado y guardar en self.id
-                nuevo_dron = self.listar_drones_api().get(alias)
-                if nuevo_dron:
-                    self.alias = alias
-                    self.id = nuevo_dron.get('id')
-                    print(f"ID asignado al dron '{alias}': {self.id}")
+                 # Asignar el ID del dron recién agregado a self.id si la respuesta contiene el ID
+                drones = self.listar_drones_api()
+                for dron in drones:
+                    if dron.get('alias') == str(alias).strip():
+                        self.alias = alias
+                        self.id = int(dron.get('id'))
+                        print(f"ID asignado al dron '{alias.strip()}': {self.id}")
             else:
                 print(f"Error al agregar el dron. Código de estado: {response.status_code}")
         except requests.RequestException as e:
@@ -462,24 +470,40 @@ class Dron:
         drones = self.listar_drones_api()
         
         # Verificar si el alias existe en la lista de drones
-        if self.alias not in drones:
-            print(f"Error: No estás registrado")
-            return
+        if drones != None:
+            # Verificar si el alias ya existe en la lista de drones
+            for dron in drones:
+                if dron.get('alias') == self.alias.strip():
+                    # Realizar la solicitud para modificar el dron
+                    url = f"{self.url_api}/modificar_dron/{self.id}"
+                    print("Introduce el nuevo alias que quieres que tenga")
+                    nuevo_alias = sys.stdin.readline()
+                    data = {'alias': str(nuevo_alias.strip())}
+
+                    try:
+                        response = requests.put(url, json=data, verify=False)
+                        if response.status_code == 200:
+                            self.alias=nuevo_alias
+                            print(f"Alias modificado correctamente. Nuevo alias: '{nuevo_alias}'")
+                        else:
+                            print(f"Error al modificar el dron. Código de estado: {response.status_code}")
+                    except requests.RequestException as e:
+                        print(f"Error de conexión: {e}")
         
-        # Realizar la solicitud para modificar el dron
-        url = f"{self.url_api}/modificar_dron/{self.id}"
-        nuevo_alias = sys.stdin.readline()
-        data = {'alias': nuevo_alias}
+    def borrar_dron_api(self, alias):
+        url = f"{self.url_api}/borrar_dron/{self.id}"  # Reemplaza 'URL_DE_TU_API' con la URL correcta de tu API
 
         try:
-            response = requests.put(url, json=data)
+            response = requests.delete(url, verify=False)
             if response.status_code == 200:
-                print(f"Alias modificado correctamente. Nuevo alias: '{nuevo_alias}'")
+                print(f"Dron con alias '{alias}' eliminado correctamente")
+            elif response.status_code == 404:
+                print(f"No se encontró el dron con el id '{self.id}'")
             else:
-                print(f"Error al modificar el dron. Código de estado: {response.status_code}")
+                print(f"Error al intentar eliminar el dron. Código de estado: {response.status_code}")
         except requests.RequestException as e:
             print(f"Error de conexión: {e}")
-            
+                
     # *Menú del dron para interactuar con registry
     def menu_nuevo(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
         token=""
@@ -509,22 +533,7 @@ class Dron:
             self.modificar_dron_api()
                        
         elif (opc==3):
-            print("Introduce el alias del dron que quieres eliminar")
-            alias = sys.stdin.readline()
-            #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
-            message = f"{opc} {alias}"
-            self.enviar_mensaje(cliente, message)
-            
-            print("soy el cliente")
-            
-            message = cliente.recv(HEADER).decode(FORMAT)
-            message = int(message)
-            message = cliente.recv(message).decode(FORMAT)
-            
-            if(message == "ok"):
-                print("El dron ", alias , " se ha eliminado con exito")
-            else:
-                print("No se ha encontrado al dron ", alias , " en la base de datos ")
+           self.borrar_dron_api(self.alias)
                         
         elif (opc==5):
             cliente.close()
