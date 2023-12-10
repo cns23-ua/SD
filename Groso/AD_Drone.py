@@ -82,7 +82,6 @@ class Dron:
         return resul
 
     # !Kafka:
-    
     # * Funcion que recibe el destino del dron mediante kafka
     def recibir_destino(self, servidor_kafka, puerto_kafka, timeout_segundos,cliente):
         consumer = KafkaConsumer(bootstrap_servers=f"{servidor_kafka}:{puerto_kafka}")
@@ -224,18 +223,8 @@ class Dron:
             if orden == "Rechazado":
                 print("Conexión rechazada por el engine")
                 client.close()
-            elif orden_preparada[0] == "RUN":
-                pos_fin = Coordenada(int(orden_preparada[1]), int(orden_preparada[2]))
-                while self.color == "Rojo":
-                    try:
-                        self.mover(pos_fin)
-                        self.enviar_mensaje(client, f"{self.posicion[0]} {self.posicion[1]}")
-                    except (ConnectionResetError, ConnectionAbortedError):
-                        print("Conexión con el servidor perdida.")
-                        break
-                client.send("Vuelvo a base")
-            elif orden == "END":
-                client.close()
+            else:
+                self.borrar_token_api()
         except Exception as e:
             print(f"No se ha podido establecer conexión (engine): {e}")
             if 'client' in locals():
@@ -349,7 +338,6 @@ class Dron:
 
                 self.alias=token_manejable[0]
                 self.id=int(token_manejable[1])
-                self.token=token_manejable[2]
 
         elif (opc==2):   
                 print("Dime el Alias del dron que quieres modificar")
@@ -597,8 +585,8 @@ class Dron:
             print("\nIntroduce mi alias")
             alias = sys.stdin.readline()
             #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
-            self.agregar_dron_api(alias)
-                 
+            self.agregar_dron_api(alias)        
+    
         elif (opc==2):      
             self.modificar_dron_api()
                        

@@ -7,8 +7,23 @@ const { v4: uuidv4 } = require('uuid');
 
 class Registry {
     constructor() {
-        this.registryData = {};
-        this.fileName = '/home/lpv24/Escritorio/SD/SD/Groso/BD.json';
+        this.fileName = "/home/lpv24/Escritorio/SD/SD/Groso/BD.json";
+        this.registryData = this.obtenerDatosGuardados();
+    }
+
+    obtenerDatosGuardados() {
+        try {
+            if (fs.existsSync(this.fileName)) {
+                const data = fs.readFileSync(this.fileName, 'utf8');
+                return JSON.parse(data);
+            } else {
+                console.error('El archivo JSON no existe o está vacío.');
+                return {};
+            }
+        } catch (err) {
+            console.error('Error al leer el archivo JSON:', err);
+            return {};
+        }
     }
 
     // Función para obtener el próximo ID basado en la cantidad de drones en el registro
@@ -18,6 +33,7 @@ class Registry {
     }
 
     agregarDron(alias) {
+        this.registryData = this.obtenerDatosGuardados();
         const droneId = this.obtenerProximoId(); // Obtener el próximo ID dinámicamente
 
         this.registryData[alias] = { id: droneId };
@@ -27,6 +43,7 @@ class Registry {
     }
     
     modificarDron(id, nuevoAlias) {
+        this.registryData = this.obtenerDatosGuardados();
         let dronEncontrado = null;
     
         for (const key in this.registryData) {
@@ -36,6 +53,7 @@ class Registry {
             }
         }
     
+        this.registryData = this.obtenerDatosGuardados();
         if (!dronEncontrado) {
             return { error: "No se encontró el dron con el ID proporcionado" };
         }
@@ -48,11 +66,11 @@ class Registry {
     
     
         this.guardarRegistro();
-    
         return { id, alias: nuevoAlias };
     }
     
     obtenerListaDrones() {
+        this.registryData = this.obtenerDatosGuardados();
         return Object.keys(this.registryData).map((alias) => ({
             alias,
             id: this.registryData[alias].id,
@@ -60,7 +78,8 @@ class Registry {
         }));
     }
 
-    borrarDron(id) {    
+    borrarDron(id) {  
+        this.registryData = this.obtenerDatosGuardados();  
         let dronEncontrado = null;
     
         for (const key in this.registryData) {
@@ -77,11 +96,11 @@ class Registry {
         delete this.registryData[dronEncontrado]; // Eliminar la entrada con el alias especificado
         
         this.guardarRegistro();
-    
         return { id };
     }
 
     generarToken(alias) {
+        this.registryData = this.obtenerDatosGuardados();
         if (!this.registryData[alias]) {
             return { error: "No se encontró el dron con el alias proporcionado" };
         }
@@ -89,7 +108,6 @@ class Registry {
         const token = uuidv4(); // Generar un token único
         this.registryData[alias].token = token;
         this.guardarRegistro();
-
         return { alias, token };
     }
     
@@ -165,6 +183,7 @@ router.put('/generar_token/:alias', (req, res) => {
 });
 
 router.put('/borrar_token/:alias', (req, res) => {
+    registry.registryData = registry.obtenerDatosGuardados();
     const { alias } = req.params;
 
     if (!alias) {
@@ -179,7 +198,6 @@ router.put('/borrar_token/:alias', (req, res) => {
     delete registry.registryData[alias].token;
 
     registry.guardarRegistro();
-
     res.json({ message: `Token eliminado del dron '${alias}'` });
 });
 

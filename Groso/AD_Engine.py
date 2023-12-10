@@ -431,7 +431,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="TestFig.json"
+    fichero="AwD_figuras_correccion.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
@@ -450,15 +450,3 @@ if (len(sys.argv) == 7):
     if fichero != "":   
         engine.start()
         
-
-if (len(sys.argv) == 2):
-    engine = AD_Engine("","","","","","")
-    fichero = sys.argv[1]
-    engine.procesar_fichero(fichero)
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    ADDR = (SERVER, PORT) 
-    server.bind(ADDR)
-    engine.start()
-    
-
-#Las figuras ya funcionan
