@@ -18,6 +18,12 @@ from json import loads
 import requests
 import ssl
 
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import hashes
+from base64 import b64encode, b64decode
+
+
 HEADER = 64 
 FORMAT = 'utf-8'
 FIN = "FIN"
@@ -25,7 +31,7 @@ JSON_FILE = "BD.json"
 SERVER = "127.0.0.2"
 CONEX_ACTIVAS = 0
 CERT = 'certServ.pem' 
-
+KEY = "clave_secreta_32b".ljust(32, ' ').encode('utf-8')
 
 class AD_Engine:
         
@@ -41,6 +47,34 @@ class AD_Engine:
         self.figuras = ""
         self.drones = []
         self.ciudad = "Marvella"
+        
+    def encrypt_message(self, message, key):
+        iv = b'\x00' * 12  # Vector de inicialización (puedes generar uno de forma segura)
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(message.encode()) + encryptor.finalize()
+
+        # Obtén el tag de autenticación
+        tag = encryptor.tag
+
+        return b64encode(iv + ciphertext + tag).decode('utf-8')
+
+    def decrypt_message(self, ciphertext, key):
+        # Decodifica la cadena base64
+        ciphertexta = b64decode(ciphertext.encode('utf-8'))
+
+        # Extrae el IV y el tag
+        
+        iv = ciphertexta[:12]
+        ciphertext = ciphertexta[12:-16]
+        tag = ciphertexta[-16:]
+
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
+        decryptor = cipher.decryptor()
+
+        # Desencripta el mensaje
+        decrypted_message = decryptor.update(ciphertext) + decryptor.finalize()
+        return decrypted_message.decode('utf-8')
         
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, connstream, msg): 
@@ -99,7 +133,8 @@ class AD_Engine:
         
         for msg in consumer:
             if msg.value:
-                mensaje = loads(msg.value.decode('utf-8'))
+                mensa = loads(msg.value.decode('utf-8'))
+                mensaje = self.decrypt_message(mensa,KEY)
                 
                 separado = mensaje.split(',')
                 id = int(separado[0])
