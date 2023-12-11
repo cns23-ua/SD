@@ -117,6 +117,7 @@ class AD_Engine:
         topic = "motivo_a_drones_topic"
         
         time.sleep(0.3)
+        razon = self.encrypt_message(razon,KEY)
         producer.send(topic, dumps(razon).encode('utf-8'))
         producer.flush()
         

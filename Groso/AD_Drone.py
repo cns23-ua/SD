@@ -181,6 +181,7 @@ class Dron:
             for msg in consumer:
                 if msg.value:
                     mensaje = loads(msg.value.decode('utf-8'))
+                    mensaje = self.decrypt_message(mensaje,KEY)
                     print("Mensaje: ", mensaje)
                     if(mensaje=="No tiempo"):
                         print("No podemos contactar con weather, volvemos a casa")
