@@ -89,6 +89,7 @@ class AD_Engine:
         topic = "mapa_a_drones_topic"
                       
         time.sleep(0.3)
+        
         producer.send(topic, pickle.dumps(self.mapa.cuadros))
         producer.flush()
         
@@ -109,6 +110,7 @@ class AD_Engine:
            
         cadena = str(drones_figura)
         time.sleep(0.3)
+        cadena = self.encrypt_message(cadena,KEY)
         producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
         

@@ -131,6 +131,7 @@ class Dron:
 
             if msg:
                 mensaje = loads(next(iter(msg.values()))[0].value.decode('utf-8'))
+                mensaje = self.decrypt_message(mensaje,KEY)
                 self.destino = eval(mensaje)[self.id]
                 x, y = map(int, self.destino.split(","))
                 if((x > 20 or x < 1) or (y > 20 or y < 1)):
