@@ -32,13 +32,14 @@ class Dron:
     # *Constructor
     def __init__(self):
         self.id = 1
-        self.alias = ""
+        self.alias = "alias"
         self.color = "Rojo"
         self.coordenada = Coordenada(1,1)
-        self.token = ""
+        self.token = "token"
         self.destino = ""
         self.mapa = Tablero(tk.Tk(),20,20)
         self.url_api = "https://localhost:3000"
+        self.url_api_eng = "https://localhost:3001"
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
@@ -225,11 +226,60 @@ class Dron:
                 client.close()
             else:
                 self.borrar_token_api()
+                return client
         except Exception as e:
             print(f"No se ha podido establecer conexión (engine): {e}")
             if 'client' in locals():
                 client.close()
-        return client
+    
+    def conectar_verify_engine_API(self, SERVER_eng, PORT_eng):   
+        self.generar_token_api()
+        # Generamos la token y iniciamos el tiempo de la autodestrucción
+        thread = threading.Thread(target=self.borrar_token_en_20s)
+        thread.start()
+        resultado = ""
+        try:
+            url = f"{self.url_api_eng}/verificar_dron"  # Reemplaza con la URL correcta de tu API
+
+            # Define el cuerpo de la solicitud con el token
+            payload = {'token': self.token}
+
+            try:
+                response = requests.post(url, json=payload, verify=False)
+                if response.status_code == 200:
+                    resultado = "Exito"
+                else:
+                    print(f"Error al verificar el token. Código de estado: {response.status_code}")
+                    return None
+            except requests.RequestException as e:
+                print(f"Error de conexión: {e}")
+                return None
+                    
+            if resultado == "Exito":
+                ADDR_eng = (SERVER_eng, PORT_eng)
+                client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client.connect(ADDR_eng)
+            
+                print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
+                message = f"{self.alias} {self.id} API"     
+                print(message) 
+                self.enviar_mensaje(client, message)
+                
+                orden = ""
+                while orden == "":
+                    orden = self.receive_message(client)
+                    orden_preparada = orden.split(" ")
+                    
+                if orden == "Rechazado":
+                    print("Conexión rechazada por el engine")
+                    client.close()
+                else:
+                    self.borrar_token_api()
+                    return client
+        except Exception as e:
+            print(f"No se ha podido establecer conexión (engine): {e}")
+            if 'client' in locals():
+                client.close()
     
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
@@ -396,7 +446,18 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
-                cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                opt = 0
+                while(opt != 1 and opt != 2):
+                    print("Por donde deseas verificarte en el engine?")
+                    print("1.Via sokets")
+                    print("2.Via API")
+                    opt = int(sys.stdin.readline())
+                    if opt == 1:
+                        cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                    elif opt == 2:
+                        cliente = self.conectar_verify_engine_API(SERVER_eng, PORT_eng)
+                    else: 
+                        print("Opción no válida, inténtalo de nuevo.")
                 cont=0
                 hecho=False
                 while True:
@@ -598,7 +659,18 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
-                cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                opt = 0
+                while(opt != 1 and opt != 2):
+                    print("Por donde deseas verificarte en el engine?")
+                    print("1.Via sokets")
+                    print("2.Via API")
+                    opt = int(sys.stdin.readline())
+                    if opt == 1:
+                        cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                    elif opt == 2:
+                        cliente = self.conectar_verify_engine_API(SERVER_eng, PORT_eng)
+                    else: 
+                        print("Opción no válida, inténtalo de nuevo.")
                 cont=0
                 hecho=False
                 while True:

@@ -16,6 +16,11 @@ from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from json import loads
 import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# Desactivar las advertencias de solicitud no segura debido a certificados autofirmados
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 
 HEADER = 64 
 FORMAT = 'utf-8'
@@ -39,6 +44,7 @@ class AD_Engine:
         self.figuras = ""
         self.drones = []
         self.ciudad = "Marvella"
+        self.url_api_eng = "https://localhost:3001"
         
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
@@ -206,25 +212,50 @@ class AD_Engine:
             id = int(message.split()[1])
             token = message.split()[2]  
 
-
-            try:
-                with open(JSON_FILE, "r") as file:
-                    data = json.load(file)
-            except FileNotFoundError:
-                print("No se encontró el archivo")
-                data = {}  
-   
-            # Comprobamos que el alias y el token están en el json
-            for clave, valor in data.items():
-                if "token" in valor and valor["token"] == token:
-                    message_to_send = "Dron verificado"
+            if token != "API":
+                try:
+                    with open(JSON_FILE, "r") as file:
+                        data = json.load(file)
+                except FileNotFoundError:
+                    print("No se encontró el archivo")
+                    data = {}  
+    
+                # Comprobamos que el alias y el token están en el json
+                for clave, valor in data.items():
+                    if "token" in valor and valor["token"] == token:
+                        message_to_send = "Dron verificado"
+                        self.enviar_mensaje(conn, message_to_send)
+                        self.drones.append(int(id))
+                        return True
+                else:
+                    message_to_send = "Rechazado"
                     self.enviar_mensaje(conn, message_to_send)
-                    self.drones.append(int(id))
-                    return True
+                    return False
             else:
-                message_to_send = "Rechazado"
-                self.enviar_mensaje(conn, message_to_send)
-                return False
+                url = f"{self.url_api_eng}/ids_verificados"  # Reemplaza esto con la URL de tu API Engine
+                try:
+                    response = requests.get(url, verify=False)
+                    if response.status_code == 200:
+                        data = response.json()  # Obtener el diccionario desde la respuesta JSON
+                        ids_verificados = data.get('idsVerificados', [])  # Obtener la lista de IDs verificados del diccionario                        print(ids_verificados)
+                        if id in ids_verificados:
+                            print(f"El ID {id} está en la lista de IDs verificados.")
+                            message_to_send = "Dron verificado"
+                            self.enviar_mensaje(conn, message_to_send)
+                            self.drones.append(int(id))
+                            return True
+                        else:
+                            print(f"El ID {id} no está en la lista de IDs verificados.")
+                            message_to_send = "Rechazado"
+                            self.enviar_mensaje(conn, message_to_send)
+                            return False                    
+                    else:
+                        print(f"Error al obtener la lista de IDs verificados. Código de estado: {response.status_code}")
+                        message_to_send = "Rechazado"
+                        self.enviar_mensaje(conn, message_to_send)
+                        return False
+                except requests.RequestException as e:
+                    print(f"Error de conexión: {e}")
             
     def dibujar_tablero_engine(self):
         root = tk.Tk()
@@ -304,7 +335,10 @@ class AD_Engine:
         print(f"[NUEVA CONEXION] {addr} connected.")
         global CONEX_ACTIVAS
         CONEX_ACTIVAS = CONEX_ACTIVAS + 1
-        self.autenticar_dron(conn)
+        if self.autenticar_dron(conn) == False:
+            CONEX_ACTIVAS = CONEX_ACTIVAS - 1
+            conn.close()
+            return False
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
         #weather = self.contactar_weather(ip_weather, puerto_weather)
@@ -417,8 +451,6 @@ class AD_Engine:
             if (CONEX_ACTIVAS <= MAX_CONEXIONES): 
                 thread = threading.Thread(target= self.handle_client, args=(conn, addr))
                 thread.start()
-                               
-                
                 print(f"[CONEXIONES ACTIVAS] {CONEX_ACTIVAS}")     
                 print("CONEXIONES RESTANTES PARA CERRAR EL SERVICIO", MAX_CONEXIONES-CONEX_ACTIVAS)
             else:
