@@ -23,13 +23,6 @@ def send_message(msg , cliente):
     cliente.send(send_length)
     cliente.send(message)
 
-def generate_random_token(length):
-    alphabet = string.ascii_letters + string.digits
-    token = ''.join(secrets.choice(alphabet) for i in range(length))
-    return token
-
-
-
 def eliminar_dron_por_nombre(alias, JSON_FILE):
     try:
         with open(JSON_FILE, "r") as file:
@@ -47,9 +40,8 @@ def eliminar_dron_por_nombre(alias, JSON_FILE):
     else:
         return "Not existe", False
 
-def save_drone_info(alias , id , token):
+def save_drone_info(alias , id):
     try:
-        
         with open(JSON_FILE, "r") as file:
             data = json.load(file)
     except FileNotFoundError:
@@ -57,8 +49,7 @@ def save_drone_info(alias , id , token):
 
     if alias not in data:
         data[alias] = {
-            "id": id,
-            "token": token
+            "id": id
         }
     else:
         print(f"Alias '{alias}' ya existe en la base de datos. No se sobrescribirá.")
@@ -69,7 +60,6 @@ def save_drone_info(alias , id , token):
 
 def handle_client(conn, addr):
     print(f"[NUEVA CONEXION] {addr} connected.")
-    
     connected = True
     try:
         while connected:
@@ -82,11 +72,8 @@ def handle_client(conn, addr):
                 
                 alias = message.split()[1]
                 opc = int(message.split()[0])
-
-
                 if message == FIN:
                     connected = False
-                    
                     
                 elif opc==1:
                     try:
@@ -103,15 +90,11 @@ def handle_client(conn, addr):
                         max_id = max(data.values(), key=lambda x: x["id"])["id"]
                         # Calcula el nuevo ID sumando 1 al ID más alto
                         id = max_id + 1
-
-                        
-                    token = generate_random_token(64) 
-                    save_drone_info(alias , id , token)
-                    message_to_send = f"{alias} {id} {token}" 
+                           
+                    save_drone_info(alias , id)
+                    message_to_send = f"{alias} {id}" 
                     send_message(message_to_send, conn)
-                        
-                        
-                        
+                               
                 elif opc == 2:
                     try:
                         with open(JSON_FILE, "r") as file:
@@ -154,19 +137,13 @@ def handle_client(conn, addr):
                         send_message(message_to_send, conn)
                 
                 elif opc==4:
-                    conn.close()
-                        
-                        
+                    conn.close()     
     except:
         conn.close()
     print("ADIOS. TE ESPERO EN OTRA OCASION")
 
     conn.close()
         
-    
-    
-        
-
 def start():
     with open(JSON_FILE, 'w') as archivo:
         json.dump({}, archivo)

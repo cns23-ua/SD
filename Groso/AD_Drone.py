@@ -16,6 +16,13 @@ import pickle
 from kafka import KafkaConsumer
 from json import loads
 from confluent_kafka import KafkaException, KafkaError
+import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+import threading
+
+# Desactivar las advertencias de solicitud no segura debido a certificados autofirmados
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 
 HEADER = 64
 FORMAT = 'utf-8'
@@ -25,12 +32,14 @@ class Dron:
     # *Constructor
     def __init__(self):
         self.id = 1
-        self.alias = ""
+        self.alias = "alias"
         self.color = "Rojo"
         self.coordenada = Coordenada(1,1)
-        self.token = ""
+        self.token = "token"
         self.destino = ""
         self.mapa = Tablero(tk.Tk(),20,20)
+        self.url_api = "https://localhost:3000"
+        self.url_api_eng = "https://localhost:3001"
         
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
@@ -73,10 +82,7 @@ class Dron:
                     resul.y =optima[1]
         return resul
 
-
-    
     # !Kafka:
-    
     # * Funcion que recibe el destino del dron mediante kafka
     def recibir_destino(self, servidor_kafka, puerto_kafka, timeout_segundos,cliente):
         consumer = KafkaConsumer(bootstrap_servers=f"{servidor_kafka}:{puerto_kafka}")
@@ -168,6 +174,7 @@ class Dron:
         producer.flush()
         
         # *Notifica los destinos a los drones y los pone en marcha
+        
     def notificar_posicion(self, servidor_kafka, puerto_kafka, pos_vieja): # !KAFKA
         producer = KafkaProducer(bootstrap_servers= servidor_kafka + ":" + str(puerto_kafka))
         
@@ -189,8 +196,17 @@ class Dron:
         cliente.send(message)
     
         
+    def borrar_token_en_20s(self):
+        time.sleep(20)  
+        self.borrar_token_api()
+        
     # *Función que comunica con el servidor(engine) y hace lo que le mande
-    def conectar_verify_engine(self, SERVER_eng, PORT_eng):              
+    def conectar_verify_engine(self, SERVER_eng, PORT_eng):   
+        self.generar_token_api()
+        # Generamos la token y iniciamos el tiempo de la autodestrucción
+        thread = threading.Thread(target=self.borrar_token_en_20s)
+        thread.start()
+        
         try:
             ADDR_eng = (SERVER_eng, PORT_eng)
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -208,23 +224,62 @@ class Dron:
             if orden == "Rechazado":
                 print("Conexión rechazada por el engine")
                 client.close()
-            elif orden_preparada[0] == "RUN":
-                pos_fin = Coordenada(int(orden_preparada[1]), int(orden_preparada[2]))
-                while self.color == "Rojo":
-                    try:
-                        self.mover(pos_fin)
-                        self.enviar_mensaje(client, f"{self.posicion[0]} {self.posicion[1]}")
-                    except (ConnectionResetError, ConnectionAbortedError):
-                        print("Conexión con el servidor perdida.")
-                        break
-                client.send("Vuelvo a base")
-            elif orden == "END":
-                client.close()
+            else:
+                self.borrar_token_api()
+                return client
         except Exception as e:
             print(f"No se ha podido establecer conexión (engine): {e}")
             if 'client' in locals():
                 client.close()
-        return client
+    
+    def conectar_verify_engine_API(self, SERVER_eng, PORT_eng):   
+        self.generar_token_api()
+        # Generamos la token y iniciamos el tiempo de la autodestrucción
+        thread = threading.Thread(target=self.borrar_token_en_20s)
+        thread.start()
+        resultado = ""
+        try:
+            url = f"{self.url_api_eng}/verificar_dron"  # Reemplaza con la URL correcta de tu API
+
+            # Define el cuerpo de la solicitud con el token
+            payload = {'token': self.token}
+
+            try:
+                response = requests.post(url, json=payload, verify=False)
+                if response.status_code == 200:
+                    resultado = "Exito"
+                else:
+                    print(f"Error al verificar el token. Código de estado: {response.status_code}")
+                    return None
+            except requests.RequestException as e:
+                print(f"Error de conexión: {e}")
+                return None
+                    
+            if resultado == "Exito":
+                ADDR_eng = (SERVER_eng, PORT_eng)
+                client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client.connect(ADDR_eng)
+            
+                print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
+                message = f"{self.alias} {self.id} API"     
+                print(message) 
+                self.enviar_mensaje(client, message)
+                
+                orden = ""
+                while orden == "":
+                    orden = self.receive_message(client)
+                    orden_preparada = orden.split(" ")
+                    
+                if orden == "Rechazado":
+                    print("Conexión rechazada por el engine")
+                    client.close()
+                else:
+                    self.borrar_token_api()
+                    return client
+        except Exception as e:
+            print(f"No se ha podido establecer conexión (engine): {e}")
+            if 'client' in locals():
+                client.close()
     
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
@@ -275,13 +330,27 @@ class Dron:
 
 
 
+    def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
+        print("Bienvenido al menú:")
+        print("1. Registro Clásico")
+        print("2. API")
+        print("3. Salir")
+        opcion = int(sys.stdin.readline())
 
+        if opcion == 1:
+            print("Has seleccionado Registro Clásico")
+            self.menu_clasico(server_reg, port_reg, cliente , SERVER_eng , PORT_eng)
+        elif opcion == 2:
+            print("Has seleccionado API")
+            self.menu_nuevo(server_reg, port_reg, cliente , SERVER_eng , PORT_eng)
+        elif opcion == 3:
+            sys.exit(1)
+        else:
+            print("Opción inválida. Por favor, elige 1 o 2.")
 
-        
 
     # *Menú del dron para interactuar con registry
-    def menu(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
-        
+    def menu_clasico(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
         token=""
         opc = 0
         
@@ -319,13 +388,8 @@ class Dron:
 
                 self.alias=token_manejable[0]
                 self.id=int(token_manejable[1])
-                self.token=token_manejable[2]
 
-                
-                
-                
-        elif (opc==2):
-                      
+        elif (opc==2):   
                 print("Dime el Alias del dron que quieres modificar")
                 alias = sys.stdin.readline()
                 
@@ -382,8 +446,231 @@ class Dron:
             sys.exit(1)
 
         elif (opc==4):
+                opt = 0
+                while(opt != 1 and opt != 2):
+                    print("Por donde deseas verificarte en el engine?")
+                    print("1.Via sokets")
+                    print("2.Via API")
+                    opt = int(sys.stdin.readline())
+                    if opt == 1:
+                        cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                    elif opt == 2:
+                        cliente = self.conectar_verify_engine_API(SERVER_eng, PORT_eng)
+                    else: 
+                        print("Opción no válida, inténtalo de nuevo.")
+                cont=0
+                hecho=False
+                while True:
+                    try:
+                        hecho=self.recibir_motivo_vuelta("127.0.0.1", 9092, hecho)
+                        if (self.recibir_destino("127.0.0.1", 9092,6,cliente)):
+                            break
+                        mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                        if mapa_actualizado_cuadros != self.mapa.cuadros:
+                            self.mapa.cuadros = mapa_actualizado_cuadros
+                            pos_vieja = self.coordenada
+                            
+                            self.mostrar_mapa_terminal_rotado(mapa_actualizado_cuadros)
+                            
+                            self.mover(self.destino)
+                            self.notificar_posicion("127.0.0.1", 9092, pos_vieja)
+                            print("Destino:", self.destino.x, ",", self.destino.y)
+                            print("Posicion:", self.coordenada.x, ",", self.coordenada.y)
+                    except(ConnectionResetError, ConnectionAbortedError):
+                        print("Conexión con el servidor perdida.")
+                        break
+        if(opc!=5):
+            self.menu(SERVER,PORT, port_reg , SERVER_eng , PORT_eng)
             
-                cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+    def listar_drones_api(self):
+        url = f"{self.url_api}/listar_drones"  # Reemplaza 'URL_DE_TU_API' con la URL correcta de tu API
+        
+        try:
+            response = requests.get(url, verify=False)
+            if response.status_code == 200:
+                drones = response.json()
+                return drones  # Devolver los datos de los drones
+            else:
+                print("Error al obtener la lista de drones.")
+                return {}  # Devolver un diccionario vacío en caso de error
+        except requests.RequestException as e:
+            print(f"Error de conexión: {e}")
+            return {}  # Devolver un diccionario vacío en caso de error
+            
+    def agregar_dron_api(self, alias):
+        drones = self.listar_drones_api()
+        if drones != None:
+            # Verificar si el alias ya existe en la lista de drones
+            for dron in drones:
+                if dron.get('alias') == str(alias).strip():
+                    print("Ya hay un dron que tiene este alias")
+                    return
+        
+        # Si el alias no existe, realizar la solicitud para agregar el dron
+        url = f"{self.url_api}/agregar_dron"  # Reemplaza 'URL_DE_TU_API' con la URL correcta de tu API
+        data = {"alias": str(alias).strip()}
+
+        try:
+            response = requests.post(url, json=data, verify=False)
+            if response.status_code == 201:
+                print(f"Dron con alias '{str(alias).strip()}' agregado correctamente.")
+                # Obtener el ID asignado al dron recién agregado y guardar en self.id
+                 # Asignar el ID del dron recién agregado a self.id si la respuesta contiene el ID
+                drones = self.listar_drones_api()
+                for dron in drones:
+                    if dron.get('alias') == str(alias).strip():
+                        self.alias = alias
+                        self.id = int(dron.get('id'))
+                        print(f"ID asignado al dron '{alias.strip()}': {self.id}")
+            else:
+                print(f"Error al agregar el dron. Código de estado: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"Error de conexión: {e}")
+            
+    def modificar_dron_api(self):
+        drones = self.listar_drones_api()
+        dentro = False
+        # Verificar si el alias existe en la lista de drones
+        if drones != None:
+            # Verificar si el alias ya existe en la lista de drones
+            for dron in drones:
+                if dron.get('alias') == self.alias.strip():
+                    dentro = True
+                    # Realizar la solicitud para modificar el dron
+                    url = f"{self.url_api}/modificar_dron/{self.id}"
+                    print("Introduce el nuevo alias que quieres que tenga")
+                    nuevo_alias = sys.stdin.readline()
+                    data = {'alias': str(nuevo_alias.strip())}
+
+                    try:
+                        response = requests.put(url, json=data, verify=False)
+                        if response.status_code == 200:
+                            self.alias=nuevo_alias
+                            print(f"Alias modificado correctamente. Nuevo alias: '{nuevo_alias.strip()}'")
+                        else:
+                            print(f"Error al modificar el dron. Código de estado: {response.status_code}")
+                    except requests.RequestException as e:
+                        print(f"Error de conexión: {e}")
+        if dentro == False:
+            print("Este dron no está registrado")
+        
+    def borrar_dron_api(self, alias):
+        url = f"{self.url_api}/borrar_dron/{self.id}"  # Reemplaza 'URL_DE_TU_API' con la URL correcta de tu API
+
+        try:
+            response = requests.delete(url, verify=False)
+            if response.status_code == 200:
+                print(f"Dron con alias '{alias.strip()}' eliminado correctamente")
+            elif response.status_code == 404:
+                print(f"No se encontró el dron con el id '{self.id}'")
+            else:
+                print(f"Error al intentar eliminar el dron. Código de estado: {response.status_code}")
+        except requests.RequestException as e:
+            print(f"Error de conexión: {e}")
+            
+    def generar_token_api(self):
+        dentro=False
+        drones = self.listar_drones_api()
+        # Verificar si el alias existe en la lista de drones
+        if drones != None:
+            # Verificar si el alias ya existe en la lista de drones
+            for dron in drones:
+                if dron.get('alias').strip() == self.alias.strip():
+                    dentro=True
+                    url = f"{self.url_api}/generar_token/{self.alias.strip()}"  # Ruta para generar token, reemplaza 'URL_DE_TU_API'
+                    try:
+                        response = requests.put(url, verify=False)  # Realizar solicitud PUT para generar el token
+                        if response.status_code == 200:
+                            token_data = response.json()
+                            token = token_data.get('drone', {}).get('token')
+                            if token:
+                                self.token = token  # Devolver el token generado
+                            else:
+                                print("No se pudo obtener el token.")
+                                return 
+                        else:
+                            print(f"Error al generar el token. Código de estado: {response.status_code}")
+                            return None
+                    except requests.RequestException as e:
+                        print(f"Error de conexión: {e}")
+                        return None
+        if dentro == False:
+            print("Este dron no está registrado")
+                    
+    def borrar_token_api(self):
+        drones = self.listar_drones_api()
+        dentro = False
+        # Verificar si el alias existe en la lista de drones
+        if drones is not None:
+            # Verificar si el alias existe en la lista de drones
+            for dron in drones:
+                if dron.get('alias').strip() == self.alias.strip():
+                    dentro = True
+                    url = f"{self.url_api}/borrar_token/{self.alias.strip()}"  # Ruta para borrar token, reemplaza 'URL_DE_TU_API'
+                    try:
+                        response = requests.put(url, verify=False)  # Realizar solicitud PUT para borrar el token
+                        if response.status_code == 200:
+                            print(f"Token del dron '{self.alias.strip()}' eliminado correctamente.")
+                            self.token=""
+                        elif response.status_code == 404:
+                            print(f"No se encontró el dron con el alias '{self.alias.strip()}'")
+                        else:
+                            print(f"Error al intentar eliminar el token. Código de estado: {response.status_code}")
+                    except requests.RequestException as e:
+                        print(f"Error de conexión: {e}")
+                        return 
+        if dentro == False:
+            print("Este dron no está registrado.")
+        
+                
+    # *Menú del dron para interactuar con registry
+    def menu_nuevo(self, server_reg, port_reg, cliente , SERVER_eng , PORT_eng):
+        token=""
+        opc = 0
+        
+        while(opc>4 or opc<1):
+            print("\nHola, soy un dron, qué operación desea realizar?")
+            print("[1] Dar de alta")
+            print("[2] Editar perfil")
+            print("[3] Dar de baja")
+            print("[4] Añadir al espectaculo")
+            print("[5] Desconectar")
+            
+            opc=int(sys.stdin.readline())
+            
+            if(opc<1 or opc>5):
+                print("Opción no válida, inténtelo de nuevo")
+        
+        if (opc==1):
+            alias = ""
+            print("\nIntroduce mi alias")
+            alias = sys.stdin.readline()
+            #Hasta aquí hemos recopilado los datos y vamos a conectarnos al registry
+            self.agregar_dron_api(alias)        
+    
+        elif (opc==2):      
+            self.modificar_dron_api()
+                       
+        elif (opc==3):
+           self.borrar_dron_api(self.alias)
+                        
+        elif (opc==5):
+            cliente.close()
+            sys.exit(1)
+
+        elif (opc==4):
+                opt = 0
+                while(opt != 1 and opt != 2):
+                    print("Por donde deseas verificarte en el engine?")
+                    print("1.Via sokets")
+                    print("2.Via API")
+                    opt = int(sys.stdin.readline())
+                    if opt == 1:
+                        cliente = self.conectar_verify_engine(SERVER_eng, PORT_eng)
+                    elif opt == 2:
+                        cliente = self.conectar_verify_engine_API(SERVER_eng, PORT_eng)
+                    else: 
+                        print("Opción no válida, inténtalo de nuevo.")
                 cont=0
                 hecho=False
                 while True:

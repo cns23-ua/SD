@@ -1,0 +1,75 @@
+const express = require('express');
+const https = require('https');
+const fs = require('fs');
+const router = express.Router();
+
+class Engine {
+    constructor() {
+        this.registryFileName = "/home/lpv24/Escritorio/SD/SD/Groso/BD.json"; // Ruta del archivo JSON del registro
+        this.idsVerificados = [];
+    }
+
+    verificarToken(token) {
+        try {
+            if (fs.existsSync(this.registryFileName)) {
+                const data = fs.readFileSync(this.registryFileName, 'utf8');
+                const registryData = JSON.parse(data);
+                for (const droneAlias in registryData) {
+                    if (registryData[droneAlias].token === token) {
+                        this.idsVerificados.push(registryData[droneAlias].id); // Guardar el ID verificado
+                        console.log(this.idsVerificados);
+                        return { message: "Token válida", droneAlias };
+                    }
+                }
+                return { error: "Token no válida" };
+            } else {
+                return { error: "El archivo JSON del registro no existe o está vacío" };
+            }
+        } catch (err) {
+            console.error('Error al leer el archivo JSON:', err);
+            return { error: "Error al verificar la token" };
+        }
+    }
+
+    obtenerIDsVerificados() {
+        return this.idsVerificados;
+    }
+}
+
+const engine = new Engine();
+
+router.post('/verificar_dron', (req, res) => {
+    const { token } = req.body;
+    if (!token) {
+        return res.status(400).json({ error: "Falta el token del dron" });
+    }
+
+    const resultado = engine.verificarToken(token);
+    res.json(resultado);
+});
+
+router.get('/ids_verificados', (req, res) => {
+    const idsVerificados = engine.obtenerIDsVerificados();
+    res.json({ idsVerificados });
+});
+
+const options = {
+    key: fs.readFileSync('key.pem'),
+    cert: fs.readFileSync('cert.pem')
+};
+
+const app = express();
+app.use(express.json());
+app.use('/', router);
+
+const PORT = process.env.PORT || 3001; // Puerto para la API del motor
+
+const server = https.createServer(options, app);
+
+server.on('error', (error) => {
+    console.error('Error al iniciar el servidor:', error);
+});
+
+server.listen(PORT, () => {
+    console.log(`Servidor HTTPS del motor escuchando en el puerto ${PORT}`);
+});
