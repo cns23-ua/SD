@@ -51,18 +51,16 @@ class Tablero:
         x1 = x0 + 30
         y1 = y0 + 30
         cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
-        self.cuadros.append(cuadro)
+        if isinstance(cuadro, int):
+            print()
+        else:
+            self.cuadros.append(cuadro)
+            
         x_text = (x0 + x1) / 2
         y_text = (y0 + y1) / 2
         self.canvas.create_text(x_text, y_text, text=str(id), font=("Helvetica", 12))
         
-    def dibujar_casilla_sinId(self, x, y, color):
-        x0 = x * 30 + 40
-        y0 = y * 30 + 40
-        x1 = x0 + 30
-        y1 = y0 + 30
-        cuadro = self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="black")
-        self.cuadros.append(cuadro)
+   
 
     def mover_contenido(self, id, pos_origen, pos_destino, color):
         

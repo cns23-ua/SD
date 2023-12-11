@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Tablero de juego</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div id="tablero">
+    <!-- Aquí se generarán los elementos del tablero -->
+  </div>
+
+  <script>
+    // Este script generará las casillas dentro del tablero
+    const tablero = document.getElementById('tablero');
+    for (let i = 0; i < 20 * 20; i++) {
+      const casilla = document.createElement('div');
+      tablero.appendChild(casilla);
+    }
+  </script>
+</body>
+
+</html>

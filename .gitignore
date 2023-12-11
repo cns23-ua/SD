@@ -1,0 +1,14 @@
+# Ignorar archivos temporales
+*.tmp
+
+# Ignorar el directorio de dependencias
+/node_modules
+
+# Ignorar archivos de configuración
+.config
+
+# Ignorar archivos de registro
+*.log
+
+#ignorar carpeta
+__pycache__/

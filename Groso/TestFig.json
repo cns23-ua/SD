@@ -5,14 +5,30 @@
             "Drones":[{
                 "ID":1,
                 "POS":"4,4"
+                }
+            ]
+        },
+        {
+            "Nombre": "Cuadrado",
+            "Drones":[{
+                "ID":1,
+                "POS":"8,8"
                 },
                 {
                 "ID":2,
-                "POS":"2,2"
+                "POS":"8,10"
+                }
+            ]
+        },
+        {
+            "Nombre": "Arco",
+            "Drones":[{
+                "ID":1,
+                "POS":"14,14"
                 },
                 {
-                "ID":3,
-                "POS":"5,5"
+                "ID":2,
+                "POS":"15,15"
                 }
             ]
         }

@@ -15,6 +15,12 @@ import pickle
 from kafka import KafkaProducer
 from kafka import KafkaConsumer
 from json import loads
+import requests
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+# Desactivar las advertencias de solicitud no segura debido a certificados autofirmados
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
 
 HEADER = 64 
 FORMAT = 'utf-8'
@@ -38,6 +44,7 @@ class AD_Engine:
         self.figuras = ""
         self.drones = []
         self.ciudad = "Marvella"
+        self.url_api_eng = "https://localhost:3001"
         
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
@@ -145,7 +152,6 @@ class AD_Engine:
         
         
     
-        
             
     # *Función que comunica con el servidor(engine) y hace lo que le mande
     def contactar_weather(self, ip_weather, port_weather):              
@@ -208,25 +214,50 @@ class AD_Engine:
             id = int(message.split()[1])
             token = message.split()[2]  
 
-
-            try:
-                with open(JSON_FILE, "r") as file:
-                    data = json.load(file)
-            except FileNotFoundError:
-                print("No se encontró el archivo")
-                data = {}  
-   
-            # Comprobamos que el alias y el token están en el json
-            for clave, valor in data.items():
-                if "token" in valor and valor["token"] == token:
-                    message_to_send = "Dron verificado"
+            if token != "API":
+                try:
+                    with open(JSON_FILE, "r") as file:
+                        data = json.load(file)
+                except FileNotFoundError:
+                    print("No se encontró el archivo")
+                    data = {}  
+    
+                # Comprobamos que el alias y el token están en el json
+                for clave, valor in data.items():
+                    if "token" in valor and valor["token"] == token:
+                        message_to_send = "Dron verificado"
+                        self.enviar_mensaje(conn, message_to_send)
+                        self.drones.append(int(id))
+                        return True
+                else:
+                    message_to_send = "Rechazado"
                     self.enviar_mensaje(conn, message_to_send)
-                    self.drones.append(int(id))
-                    return True
+                    return False
             else:
-                message_to_send = "Rechazado"
-                self.enviar_mensaje(conn, message_to_send)
-                return False
+                url = f"{self.url_api_eng}/ids_verificados"  # Reemplaza esto con la URL de tu API Engine
+                try:
+                    response = requests.get(url, verify=False)
+                    if response.status_code == 200:
+                        data = response.json()  # Obtener el diccionario desde la respuesta JSON
+                        ids_verificados = data.get('idsVerificados', [])  # Obtener la lista de IDs verificados del diccionario                        print(ids_verificados)
+                        if id in ids_verificados:
+                            print(f"El ID {id} está en la lista de IDs verificados.")
+                            message_to_send = "Dron verificado"
+                            self.enviar_mensaje(conn, message_to_send)
+                            self.drones.append(int(id))
+                            return True
+                        else:
+                            print(f"El ID {id} no está en la lista de IDs verificados.")
+                            message_to_send = "Rechazado"
+                            self.enviar_mensaje(conn, message_to_send)
+                            return False                    
+                    else:
+                        print(f"Error al obtener la lista de IDs verificados. Código de estado: {response.status_code}")
+                        message_to_send = "Rechazado"
+                        self.enviar_mensaje(conn, message_to_send)
+                        return False
+                except requests.RequestException as e:
+                    print(f"Error de conexión: {e}")
             
     def dibujar_tablero_engine(self):
         root = tk.Tk()
@@ -277,18 +308,43 @@ class AD_Engine:
         root = tk.Tk()
         tablero = Tablero(root, 20, 20)
         tablero.cuadros=self.mapa.cuadros
-        tablero.mostrar_mensaje("FIGURA COMPLETADA!")
-        tablero.dibujar_tablero()    
+        tablero.dibujar_tablero()
+
+    def obtener_temperatura(self, api_key):
+        ciudad = ""
+        # Cargar el archivo JSON
+        with open("ciudades.json") as file:
+            datos = json.load(file)
+
+        ciudad = str(datos["ciudad"])
+        print("Ciudad: ", ciudad)
         
+        url = f'http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={api_key}&units=metric'
+        # 'units=metric' para obtener la temperatura en grados Celsius
+
+
+        response = requests.get(url)
+        if response.status_code == 200:
+            datos_clima = response.json()
+            temperatura = datos_clima['main']['temp']
+            print("Esta es la temperatura:",temperatura)
+            return temperatura
+        else:
+            print("Error al obtener la temperatura:", response.status_code)
+            return "Fallo"
+            
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         global CONEX_ACTIVAS
         CONEX_ACTIVAS = CONEX_ACTIVAS + 1
-        self.autenticar_dron(conn)
+        if self.autenticar_dron(conn) == False:
+            CONEX_ACTIVAS = CONEX_ACTIVAS - 1
+            conn.close()
+            return False
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
-        weather = self.contactar_weather(ip_weather, puerto_weather)
-        
+        #weather = self.contactar_weather(ip_weather, puerto_weather)
+        weather = self.obtener_temperatura("73d22518c7b690c635b670eb9a918309")
         
         for n_fig in range(len(self.figuras)):    
             n_fig = n_fig+1
@@ -308,10 +364,9 @@ class AD_Engine:
 
             if CONEX_ACTIVAS == n_drones:
                 
-                self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
-        
                 if(weather!="Fallo"):
-                    if(weather>0):    
+                    if(weather>0):
+                            self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")    
                             self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                             self.dibujar_tablero_engine()
 
@@ -324,9 +379,13 @@ class AD_Engine:
                                 self.dibujar_tablero_engine()               
                                 salimos = self.acabada_figura(n_fig)
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
-                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)     
-                                                        
-                            self.figura_completada()
+                                self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                                weather = self.obtener_temperatura("73d22518c7b690c635b670eb9a918309")
+                                if(weather=="Fallo" or weather<=0):
+                                    break
+                                             
+                            if(salimos==True):           
+                                self.figura_completada()
                                 
                             if (n_fig==len(self.figuras)):
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
@@ -341,9 +400,7 @@ class AD_Engine:
                                     acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
                                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
                                     self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)                            
-                            
-                            weather=self.contactar_weather(ip_weather, puerto_weather)
-                                                    
+                                                                                
                             if (weather != "Fallo" and weather<1):
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
                                 print("Volvemos a casa, situaciones climáticas adversas")
@@ -396,8 +453,6 @@ class AD_Engine:
             if (CONEX_ACTIVAS <= MAX_CONEXIONES): 
                 thread = threading.Thread(target= self.handle_client, args=(conn, addr))
                 thread.start()
-                               
-                
                 print(f"[CONEXIONES ACTIVAS] {CONEX_ACTIVAS}")     
                 print("CONEXIONES RESTANTES PARA CERRAR EL SERVICIO", MAX_CONEXIONES-CONEX_ACTIVAS)
             else:
@@ -429,15 +484,3 @@ if (len(sys.argv) == 7):
     if fichero != "":   
         engine.start()
         
-
-if (len(sys.argv) == 2):
-    engine = AD_Engine("","","","","","")
-    fichero = sys.argv[1]
-    engine.procesar_fichero(fichero)
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    ADDR = (SERVER, PORT) 
-    server.bind(ADDR)
-    engine.start()
-    
-
-#Las figuras ya funcionan
