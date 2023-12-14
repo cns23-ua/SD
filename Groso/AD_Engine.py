@@ -332,6 +332,33 @@ class AD_Engine:
         else:
             print("Error al obtener la temperatura:", response.status_code)
             return "Fallo"
+        
+    def introducir_mapa_json(self):
+        with open('BD.json', 'r') as file:
+            data = json.load(file)
+        
+        # Convertir el mapa de Python a JSON
+        mapa_json = json.dumps({"mapa": self.mapa.cuadros})
+
+        # Agregar la clave "mapa" con los datos del mapa
+        data["mapa"] = self.mapa.cuadros
+
+        # Guardar los cambios en el archivo
+        with open('BD.json', 'w') as file:
+            json.dump(data, file, indent=2)
+            
+    def actualizar_mapa_json(self):
+        # Cargar el archivo JSON existente
+        with open('BD.json', 'r') as file:
+            data = json.load(file)
+                    
+        # Actualizar los datos existentes con los nuevos datos
+        data["mapa"] = self.mapa.cuadros
+
+        # Guardar los cambios en el archivo
+        with open('BD.json', 'w') as file:
+            json.dump(data, file)
+
             
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
@@ -342,6 +369,7 @@ class AD_Engine:
             conn.close()
             return False
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
+        self.introducir_mapa_json()
         
         #weather = self.contactar_weather(ip_weather, puerto_weather)
         weather = self.obtener_temperatura("73d22518c7b690c635b670eb9a918309")
@@ -368,6 +396,7 @@ class AD_Engine:
                     if(weather>0):
                             self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")    
                             self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
+                            self.actualizar_mapa_json()
                             self.dibujar_tablero_engine()
 
                             salimos = False
@@ -376,6 +405,7 @@ class AD_Engine:
                                 resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
                                 n_drones=n_drones + resta       
                                 CONEX_ACTIVAS = CONEX_ACTIVAS + resta
+                                self.actualizar_mapa_json()
                                 self.dibujar_tablero_engine()               
                                 salimos = self.acabada_figura(n_fig)
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
@@ -395,7 +425,8 @@ class AD_Engine:
                                     self.enviar_tablero(self.ip_broker, self.puerto_broker)               
                                     resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
                                     n_drones=n_drones + resta 
-                                    NEX_ACTIVAS = CONEX_ACTIVAS + resta              
+                                    NEX_ACTIVAS = CONEX_ACTIVAS + resta
+                                    self.actualizar_mapa_json()             
                                     self.dibujar_tablero_engine()               
                                     acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
                                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
@@ -410,7 +441,8 @@ class AD_Engine:
                                     self.enviar_tablero(self.ip_broker, self.puerto_broker)               
                                     resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
                                     n_drones=n_drones + resta       
-                                    CONEX_ACTIVAS = CONEX_ACTIVAS + resta                                
+                                    CONEX_ACTIVAS = CONEX_ACTIVAS + resta
+                                    self.actualizar_mapa_json()                               
                                     self.dibujar_tablero_engine()               
                                     acabamos = self.acabado_espectaculo(n_fig, n_drones)
                                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
@@ -426,7 +458,8 @@ class AD_Engine:
                                     self.enviar_tablero(self.ip_broker, self.puerto_broker)               
                                     resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
                                     n_drones=n_drones + resta       
-                                    CONEX_ACTIVAS = CONEX_ACTIVAS + resta                                  
+                                    CONEX_ACTIVAS = CONEX_ACTIVAS + resta
+                                    self.actualizar_mapa_json()                                  
                                     self.dibujar_tablero_engine()               
                                     acabamos = self.acabado_espectaculo(n_fig, n_drones)
                                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "No tiempo")
@@ -465,7 +498,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras_correccion.json"
+    fichero="AwD_figuras.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]

@@ -28,3 +28,30 @@ body {
   #tablero div:hover {
     background-color: #c0c0c0;
   }
+
+  .fila-numeros {
+    display: grid;
+    grid-template-columns: repeat(20, 1fr);
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 10px; /* Espacio entre los números de columna y el tablero */
+  }
+
+  #contenedor {
+    display: grid;
+    grid-template-rows: auto 1fr; /* Dos filas, una para los números de columna y otra para el tablero */
+  }
+
+  .columna-numeros {
+    display: inline-block;
+    grid-template-rows: repeat(20, 1fr);
+    text-align: center;
+    font-weight: bold;
+    margin-right: 10px; /* Espacio entre los números de fila y el tablero */
+    margin-top: 40px;
+  }
+
+  /* Añade margen entre los números de la columna */
+  .columna-numeros div {
+    margin-bottom: 14.7px; /* Espacio vertical entre los números */
+  }

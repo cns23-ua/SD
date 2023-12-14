@@ -8,8 +8,18 @@
 </head>
 
 <body>
-  <div id="tablero">
-    <!-- Aquí se generarán los elementos del tablero -->
+  <div class="columna-numeros">
+    <!-- Números de fila -->
+    <!-- Se generará la numeración de 1 a 20 -->
+  </div>
+  <div id="contenedor">
+    <div class="fila-numeros">
+      <!-- Números de columna -->
+      <!-- Se generará la numeración de 1 a 20 -->
+    </div>
+    <div id="tablero">
+      <!-- Aquí se generarán los elementos del tablero -->
+    </div>
   </div>
 
   <script>
@@ -17,7 +27,24 @@
     const tablero = document.getElementById('tablero');
     for (let i = 0; i < 20 * 20; i++) {
       const casilla = document.createElement('div');
+      const fila = Math.floor(i / 20) + 1; // Calcular la fila actual (1-20)
+      const columna = (i % 20) + 1; // Calcular la columna actual (1-20)
+      casilla.id = `${columna},${fila}`; // Establecer el ID de la casilla basado en la posición fila, columna
       tablero.appendChild(casilla);
+    }
+
+    const filaNumeros = document.querySelector('.fila-numeros');
+    for (let i = 1; i <= 20; i++) {
+      const numeroColumna = document.createElement('div');
+      numeroColumna.textContent = i;
+      filaNumeros.appendChild(numeroColumna);
+    }
+
+    const columnaNumeros = document.querySelector('.columna-numeros');
+    for (let i = 1; i <= 20; i++) {
+      const numeroFila = document.createElement('div');
+      numeroFila.textContent = i;
+      columnaNumeros.appendChild(numeroFila);
     }
   </script>
 </body>

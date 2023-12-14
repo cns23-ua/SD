@@ -34,6 +34,37 @@ class Engine {
     obtenerIDsVerificados() {
         return this.idsVerificados;
     }
+
+    leerMapaDesdeJSON() {
+        try {
+            if (fs.existsSync(this.registryFileName)) {
+                const data = fs.readFileSync(this.registryFileName, 'utf8');
+                const mapa = JSON.parse(data).mapa; // Suponiendo que 'mapa' es la clave donde está el mapa en BD.json
+                return mapa;
+            } else {
+                throw new Error("El archivo JSON del registro no existe o está vacío");
+            }
+        } catch (err) {
+            console.error('Error al leer el archivo JSON:', err);
+            return null;
+        }
+    }
+
+    procesarMapa() {
+        const mapa = this.leerMapaDesdeJSON();
+        if (!mapa) {
+            return null;
+        }
+        const posicionesNoCero = [];
+        for (let i = 0; i < mapa.length; i++) {
+            for (let j = 0; j < mapa[i].length; j++) {
+                if (mapa[i][j] !== 0) {
+                    posicionesNoCero.push([i, j, mapa[i][j][2]]); // Agrega la posición al array si no es igual a cero
+                }
+            }
+        }
+        return posicionesNoCero;
+    }
 }
 
 const engine = new Engine();
@@ -51,6 +82,11 @@ router.post('/verificar_dron', (req, res) => {
 router.get('/ids_verificados', (req, res) => {
     const idsVerificados = engine.obtenerIDsVerificados();
     res.json({ idsVerificados });
+});
+
+router.get('/obtener_mapa', (req, res) => {
+    const datosMapaProcesado = engine.procesarMapa(); // Obtén el mapa procesado
+    res.json({datosMapaProcesado});
 });
 
 const options = {
