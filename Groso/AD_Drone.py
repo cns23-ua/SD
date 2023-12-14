@@ -226,7 +226,7 @@ class Dron:
         cadena = f"{self.id},{pos_vieja.x},{pos_vieja.y},{self.coordenada.x },{self.coordenada.y}"
         time.sleep(0.3)
         msg = self.encrypt_message(cadena,KEY)
-        producer.send(topic, dumps(cadena).encode('utf-8'))
+        producer.send(topic, dumps(msg).encode('utf-8'))
         producer.flush()
     
     
