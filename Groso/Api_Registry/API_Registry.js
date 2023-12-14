@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 
 class Registry {
     constructor() {
-        this.fileName = "/home/lpv24/Escritorio/SD/SD/Groso/BD.json";
+        this.fileName = "/home/tooez/Escritorio/SD/Groso/BD.json";
         this.registryData = this.obtenerDatosGuardados();
     }
 

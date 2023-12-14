@@ -18,6 +18,13 @@ from json import loads
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
+import ssl
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import hashes
+from base64 import b64encode, b64decode
+
 # Desactivar las advertencias de solicitud no segura debido a certificados autofirmados
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
@@ -28,6 +35,9 @@ FIN = "FIN"
 JSON_FILE = "BD.json"
 SERVER = "127.0.0.2"
 CONEX_ACTIVAS = 0
+
+CERT = 'certServ.pem'
+KEY = "clave_secreta_32b".ljust(32, ' ').encode('utf-8') 
 
 
 class AD_Engine:
@@ -46,14 +56,42 @@ class AD_Engine:
         self.ciudad = "Marvella"
         self.url_api_eng = "https://localhost:3001"
         
+        
+        
+        
+    def encrypt_message(self, message, key):
+        iv = b'\x00' * 12  # Vector de inicialización (puedes generar uno de forma segura)
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(message.encode()) + encryptor.finalize()
+
+        # Obtén el tag de autenticación
+        tag = encryptor.tag
+
+        return b64encode(iv + ciphertext + tag).decode('utf-8')
+
+    def decrypt_message(self, ciphertext, key):
+        # Decodifica la cadena base64
+        ciphertexta = b64decode(ciphertext.encode('utf-8'))
+
+        # Extrae el IV y el tag
+        
+        iv = ciphertexta[:12]
+        ciphertext = ciphertexta[12:-16]
+        tag = ciphertexta[-16:]
+
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
+        decryptor = cipher.decryptor()
+
+        # Desencripta el mensaje
+        decrypted_message = decryptor.update(ciphertext) + decryptor.finalize()
+        return decrypted_message.decode('utf-8')
+    
+    
     # * Funcion que envia un mensaje al servidor
-    def enviar_mensaje(self, cliente, msg): 
-        message = msg.encode(FORMAT)
-        msg_length = len(message)
-        send_length = str(msg_length).encode(FORMAT)
-        send_length += b' ' * (HEADER - len(send_length))
-        cliente.send(send_length)
-        cliente.send(message)
+    def enviar_mensaje(self, connstream, msg): 
+        mensaje_bytes = msg.encode('utf-8')
+        connstream.send(mensaje_bytes)
         
     
     # *Notifica del estado del mapa a los drones
@@ -83,6 +121,7 @@ class AD_Engine:
            
         cadena = str(drones_figura)
         time.sleep(0.3)
+        cadena = self.encrypt_message(cadena,KEY)
         producer.send(topic, dumps(cadena).encode('utf-8'))
         producer.flush()
         
@@ -91,6 +130,7 @@ class AD_Engine:
         topic = "motivo_a_drones_topic"
         
         time.sleep(0.3)
+        razon = self.encrypt_message(razon,KEY)
         producer.send(topic, dumps(razon).encode('utf-8'))
         producer.flush()
         
@@ -107,7 +147,8 @@ class AD_Engine:
         
         for msg in consumer:
             if msg.value:
-                mensaje = loads(msg.value.decode('utf-8'))
+                mensa = loads(msg.value.decode('utf-8'))
+                mensaje = self.decrypt_message(mensa,KEY) 
                 
                 separado = mensaje.split(',')
                 id = int(separado[0])
@@ -202,60 +243,66 @@ class AD_Engine:
         self.figuras = figuras
         
     # *Autentica si el dron está registrado
-    def autenticar_dron(self, conn):
-        msg_length = conn.recv(HEADER).decode(FORMAT)
-        if msg_length:
-            msg_length = int(msg_length)
-            message = conn.recv(msg_length).decode(FORMAT)
+    def autenticar_dron(self, connstream):
+        
+        messag = connstream.recv(1024)
+        
+        print("el messag es:",messag)
+        message = messag.decode('utf-8')
+        
+        print("el mensaje que me llega es:",message)
             #Spliteamos el mensaje en alias y token y leemos el json
-            alias = message.split()[0]
-            id = int(message.split()[1])
-            token = message.split()[2]  
+        alias = message.split()[0]
+        id = int(message.split()[1])
+        token = message.split()[2]  
+        
+        print("la id es:" , id)
+        print("el token es:", token)
 
-            if token != "API":
-                try:
-                    with open(JSON_FILE, "r") as file:
-                        data = json.load(file)
-                except FileNotFoundError:
-                    print("No se encontró el archivo")
-                    data = {}  
-    
-                # Comprobamos que el alias y el token están en el json
-                for clave, valor in data.items():
-                    if "token" in valor and valor["token"] == token:
-                        message_to_send = "Dron verificado"
-                        self.enviar_mensaje(conn, message_to_send)
-                        self.drones.append(int(id))
-                        return True
+        if token != "API":
+            try:
+                with open(JSON_FILE, "r") as file:
+                    data = json.load(file)
+            except FileNotFoundError:
+                print("No se encontró el archivo")
+                data = {}  
+
+            # Comprobamos que el alias y el token están en el json
+            for clave, valor in data.items():
+                if "token" in valor and valor["token"] == token:
+                    message_to_send = "Dron verificado"
+                    self.enviar_mensaje(connstream, message_to_send)
+                    self.drones.append(int(id))
+                    return True
                 else:
                     message_to_send = "Rechazado"
-                    self.enviar_mensaje(conn, message_to_send)
+                    self.enviar_mensaje(connstream, message_to_send)
                     return False
-            else:
-                url = f"{self.url_api_eng}/ids_verificados"  # Reemplaza esto con la URL de tu API Engine
-                try:
-                    response = requests.get(url, verify=False)
-                    if response.status_code == 200:
-                        data = response.json()  # Obtener el diccionario desde la respuesta JSON
-                        ids_verificados = data.get('idsVerificados', [])  # Obtener la lista de IDs verificados del diccionario                        print(ids_verificados)
-                        if id in ids_verificados:
-                            print(f"El ID {id} está en la lista de IDs verificados.")
-                            message_to_send = "Dron verificado"
-                            self.enviar_mensaje(conn, message_to_send)
-                            self.drones.append(int(id))
-                            return True
-                        else:
-                            print(f"El ID {id} no está en la lista de IDs verificados.")
-                            message_to_send = "Rechazado"
-                            self.enviar_mensaje(conn, message_to_send)
-                            return False                    
+        else:
+            url = f"{self.url_api_eng}/ids_verificados"  # Reemplaza esto con la URL de tu API Engine
+            try:
+                response = requests.get(url, verify=False)
+                if response.status_code == 200:
+                    data = response.json()  # Obtener el diccionario desde la respuesta JSON
+                    ids_verificados = data.get('idsVerificados', [])  # Obtener la lista de IDs verificados del diccionario                        print(ids_verificados)
+                    if id in ids_verificados:
+                        print(f"El ID {id} está en la lista de IDs verificados.")
+                        message_to_send = "Dron verificado"
+                        self.enviar_mensaje(connstream, message_to_send)
+                        self.drones.append(int(id))
+                        return True
                     else:
-                        print(f"Error al obtener la lista de IDs verificados. Código de estado: {response.status_code}")
+                        print(f"El ID {id} no está en la lista de IDs verificados.")
                         message_to_send = "Rechazado"
-                        self.enviar_mensaje(conn, message_to_send)
-                        return False
-                except requests.RequestException as e:
-                    print(f"Error de conexión: {e}")
+                        self.enviar_mensaje(connstream, message_to_send)
+                        return False                    
+                else:
+                    print(f"Error al obtener la lista de IDs verificados. Código de estado: {response.status_code}")
+                    message_to_send = "Rechazado"
+                    self.enviar_mensaje(connstream, message_to_send)
+                    return False
+            except requests.RequestException as e:
+                print(f"Error de conexión: {e}")
             
     def dibujar_tablero_engine(self):
         root = tk.Tk()
@@ -331,13 +378,13 @@ class AD_Engine:
             print("Error al obtener la temperatura:", response.status_code)
             return "Fallo"
             
-    def handle_client(self, conn, addr):
+    def handle_client(self, connstream, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
         global CONEX_ACTIVAS
         CONEX_ACTIVAS = CONEX_ACTIVAS + 1
-        if self.autenticar_dron(conn) == False:
+        if self.autenticar_dron(connstream) == False:
             CONEX_ACTIVAS = CONEX_ACTIVAS - 1
-            conn.close()
+            connstream.close()
             return False
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         
@@ -440,30 +487,39 @@ class AD_Engine:
       
         #conn.close()
 
-
     def start(self):
-        server.listen()
-        print(f"[LISTENING] Servidor a la escucha en {SERVER}")
+        
+        #Este es de la practica 1
+        #server.listen()
+        #practica 2
+        bindsocket.listen(MAX_CONEXIONES)
+        print(f"Escuchando en {SERVER} {puerto_escucha}" )
+        
+        
         CONEX_ACTIVAS = threading.active_count()-1
         print(CONEX_ACTIVAS)
         while True:
-            conn, addr = server.accept()
+            newsocket, fromaddr = bindsocket.accept()
+            connstream = context.wrap_socket(newsocket,server_side=True)
+            #conn, addr = server.accept()
             if (CONEX_ACTIVAS <= MAX_CONEXIONES): 
-                thread = threading.Thread(target= self.handle_client, args=(conn, addr))
+                thread = threading.Thread(target= self.handle_client, args=(connstream, fromaddr))
                 thread.start()
+                               
+                
                 print(f"[CONEXIONES ACTIVAS] {CONEX_ACTIVAS}")     
                 print("CONEXIONES RESTANTES PARA CERRAR EL SERVICIO", MAX_CONEXIONES-CONEX_ACTIVAS)
             else:
                 print("OOppsss... DEMASIADAS CONEXIONES. ESPERANDO A QUE ALGUIEN SE VAYA")
-                conn.send("OOppsss... DEMASIADAS CONEXIONES. Tendrás que esperar a que alguien se vaya".encode(FORMAT))
-                conn.close()
+                connstream.shutdown(socket.SHUT_RDWR)
+                connstream.close()
                 CONEX_ACTUALES = threading.active_count()-1
         
 
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras_correccion.json"
+    fichero="TestFig.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
@@ -474,9 +530,17 @@ if (len(sys.argv) == 7):
     
     ADDR = (SERVER, puerto_escucha) 
     print("[STARTING] Servidor inicializándose...")
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind(ADDR)
+    """server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(ADDR)"""
+    
+    #ESTO ES DE LA PRACTICA 2 LOS SSL DE SOCKET
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(CERT,CERT)
+    bindsocket = socket.socket()
+    bindsocket.bind((SERVER ,puerto_escucha))
     MAX_CONEXIONES = max_drones
+    
+    
     engine = AD_Engine(puerto_escucha, max_drones, ip_broker , puerto_broker, ip_weather, puerto_weather)
     engine.procesar_fichero(fichero)
     if fichero != "":   
