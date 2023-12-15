@@ -6,6 +6,9 @@ body {
     margin: 0;
     background-color: #f5f5f5;
     font-family: Arial, sans-serif;
+    background-image: url('cielo.jpg');
+    background-size: cover; /* Esto hace que la imagen se ajuste al tamaño de la ventana del navegador */
+    background-repeat: no-repeat; /* Evita que la imagen se repita */
   }
   
   #tablero {
