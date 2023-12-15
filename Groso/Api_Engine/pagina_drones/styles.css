@@ -20,6 +20,7 @@ body {
     border: 1px solid #ccc;
     padding: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
   }
   
   #tablero div {
@@ -65,3 +66,45 @@ body {
     align-items: center;
     margin-top: 4px;
   }
+
+  .informacion-ciudad {
+    width: 200px;
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    text-align: left;
+    margin: 10px auto;
+  }
+  
+  /* Estilos para los párrafos de la información */
+  .informacion-ciudad p {
+    margin: 10px 0;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  /* Estilos específicos para el nombre de la ciudad */
+  #nombreCiudad {
+    font-weight: bold;
+  }
+  
+  /* Estilos específicos para la temperatura */
+  #temperatura {
+    font-weight: bold;
+  }
+
+  .info-window {
+    max-height: 600px; /* Altura máxima de la ventana */
+    overflow-y: scroll; /* Habilita la barra de desplazamiento vertical */
+    border: 2px solid #ccc; /* Borde para la ventana */
+    padding: 100px 0px 400px; /* Espaciado interno */
+    background-color: #f9f9f9; /* Color de fondo */
+    margin-bottom: 20px; /* Margen inferior para separar de otros elementos */
+    width: 200px;
+    margin: 10px auto;
+    border-radius: 8px;
+  }
+  
+  /*#info-content {
+  }*/
+  
