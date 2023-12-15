@@ -385,7 +385,7 @@ class Dron:
                                                
                 token_manejable=token.split(" ")
                 #si nuestro token empieza con tkn hemos podido registrarnos, si no no y volvemos a introducir datos
-
+                print("token manejable ", token_manejable)
                 self.alias=token_manejable[0]
                 self.id=int(token_manejable[1])
 

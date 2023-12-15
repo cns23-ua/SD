@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Tablero de juego</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="columna-numeros">
+    <!-- Números de fila -->
+    <!-- Se generará la numeración de 1 a 20 -->
+  </div>
+  <div id="contenedor">
+    <div class="fila-numeros">
+      <!-- Números de columna -->
+      <!-- Se generará la numeración de 1 a 20 -->
+    </div>
+    <div id="tablero">
+      <!-- Aquí se generarán los elementos del tablero -->
+    </div>
+  </div>
+
+  <script>
+
+    // Este script generará las casillas dentro del tablero
+    const tablero = document.getElementById('tablero');
+    for (let i = 0; i < 20 * 20; i++) {
+      const casilla = document.createElement('div');
+      const fila = Math.floor(i / 20) + 1; // Calcular la fila actual (1-20)
+      const columna = (i % 20) + 1; // Calcular la columna actual (1-20)
+      casilla.id = `${columna},${fila}`; // Establecer el ID de la casilla basado en la posición fila, columna
+      tablero.appendChild(casilla);
+    }
+
+    const filaNumeros = document.querySelector('.fila-numeros');
+    for (let i = 1; i <= 20; i++) {
+      const numeroColumna = document.createElement('div');
+      numeroColumna.textContent = i;
+      filaNumeros.appendChild(numeroColumna);
+    }
+
+    const columnaNumeros = document.querySelector('.columna-numeros');
+    for (let i = 1; i <= 20; i++) {
+      const numeroFila = document.createElement('div');
+      numeroFila.textContent = i;
+      columnaNumeros.appendChild(numeroFila);
+    }
+
+    function obtenerDatosDeAPI() {
+     // URL de la API donde se encuentra el mapa
+        const url = 'https://localhost:3001/obtener_mapa';
+
+        // Configurar la solicitud a la API (GET, POST u otro método según corresponda)
+        fetch(url)
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('No se pudo obtener el mapa');
+            }
+            return response.json();
+          })
+          .then(mapaData => {
+            datosAPI = mapaData.datosMapaProcesado
+            const casillas = document.querySelectorAll('#tablero > div');
+
+            casillas.forEach(casilla => {
+              const coords = casilla.id.split(',');
+              const coordX = parseInt(coords[0]);
+              const coordY = parseInt(coords[1]);
+
+              coordenadaEncontrada = null
+
+              let x = null;
+              let y = null;
+              let id = null;
+              let color = null;
+
+              for (let i = 0; i < datosAPI.length; i++) {
+                const subArray = datosAPI[i];
+                x = subArray[0];
+                y = subArray[1];
+                id = subArray[2];
+                color = subArray[3];
+                console.log(coordX + " primera " + x)
+                console.log(coordY + " segunda " + y)
+                if (coordX == x+1 && coordY == y+1) {
+                  casilla.style.backgroundColor = color;
+                  // Crea un elemento de texto (span) para mostrar el número
+                  const numeroCasilla = casilla.querySelector('.numero-casilla');
+                  if (!numeroCasilla) {
+                    const numero = document.createElement('span');
+                    numero.textContent = id; // Coloca aquí el número que deseas mostrar
+                    numero.classList.add('numero-casilla'); // Agrega una clase para el estilo
+                    casilla.appendChild(numero); // Agrega el número a la casilla
+                  }
+                  break; // Detener el bucle una vez que se encuentren los elementos
+                }else{
+                  const numeroCasilla = casilla.querySelector('.numero-casilla');
+                  if (numeroCasilla) {
+                    casilla.removeChild(numeroCasilla);
+                  }
+                  casilla.style.backgroundColor = "#ccc";
+                }
+              }
+            });
+          })
+          .catch(error => {
+            console.error('Error al obtener el mapa:', error);
+          });
+    }
+
+    
+
+    // Llamar a la función por primera vez
+    obtenerDatosDeAPI();
+
+    // Ejecutar la función cada 5 segundos (por ejemplo)
+    setInterval(obtenerDatosDeAPI, 500); // El número representa milisegundos (5 segundos en este caso)
+  </script>
+</body>
+
+</html>

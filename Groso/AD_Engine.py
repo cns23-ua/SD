@@ -368,9 +368,8 @@ class AD_Engine:
             CONEX_ACTIVAS = CONEX_ACTIVAS - 1
             conn.close()
             return False
-        self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
-        self.introducir_mapa_json()
         
+        self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         #weather = self.contactar_weather(ip_weather, puerto_weather)
         weather = self.obtener_temperatura("73d22518c7b690c635b670eb9a918309")
         
@@ -391,6 +390,7 @@ class AD_Engine:
             #print("N_drones ", n_drones)
 
             if CONEX_ACTIVAS == n_drones:
+                self.introducir_mapa_json()
                 
                 if(weather!="Fallo"):
                     if(weather>0):
@@ -498,7 +498,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras.json"
+    fichero="AwD_figuras_correccion.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]

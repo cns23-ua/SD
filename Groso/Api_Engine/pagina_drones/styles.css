@@ -55,3 +55,10 @@ body {
   .columna-numeros div {
     margin-bottom: 14.7px; /* Espacio vertical entre los números */
   }
+
+  .numero-casilla{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 4px;
+  }

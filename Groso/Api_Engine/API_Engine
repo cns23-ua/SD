@@ -1,6 +1,7 @@
 const express = require('express');
 const https = require('https');
 const fs = require('fs');
+const cors = require('cors'); // Importa el paquete CORS
 const router = express.Router();
 
 class Engine {
@@ -59,7 +60,7 @@ class Engine {
         for (let i = 0; i < mapa.length; i++) {
             for (let j = 0; j < mapa[i].length; j++) {
                 if (mapa[i][j] !== 0) {
-                    posicionesNoCero.push([i, j, mapa[i][j][2]]); // Agrega la posición al array si no es igual a cero
+                    posicionesNoCero.push([i, j, mapa[i][j][0][0], mapa[i][j][2]]); // Agrega la posición al array si no es igual a cero
                 }
             }
         }
@@ -86,17 +87,18 @@ router.get('/ids_verificados', (req, res) => {
 
 router.get('/obtener_mapa', (req, res) => {
     const datosMapaProcesado = engine.procesarMapa(); // Obtén el mapa procesado
-    res.json({datosMapaProcesado});
+    res.json({ datosMapaProcesado });
 });
+
+const app = express();
+app.use(express.json());
+app.use(cors()); // Agrega el middleware de CORS
+app.use('/', router);
 
 const options = {
     key: fs.readFileSync('key.pem'),
     cert: fs.readFileSync('cert.pem')
 };
-
-const app = express();
-app.use(express.json());
-app.use('/', router);
 
 const PORT = process.env.PORT || 3001; // Puerto para la API del motor
 
