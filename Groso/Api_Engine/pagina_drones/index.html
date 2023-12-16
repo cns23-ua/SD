@@ -181,6 +181,8 @@
             logElement.textContent = log; // Asignar el contenido del log al elemento <p>
             infoContent.appendChild(logElement); // Agregar el log al contenedor
           });
+          // Hacer scroll hacia abajo automáticamente
+          infoContent.scrollTop = infoContent.scrollHeight;
         })
         .catch(error => {
           console.error('Error al obtener datos de la API:', error);

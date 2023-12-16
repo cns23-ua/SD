@@ -103,7 +103,7 @@ class Dron:
                 self.destino = eval(mensaje)[self.id]
                 x, y = map(int, self.destino.split(","))
                 if((x > 20 or x < 1) or (y > 20 or y < 1)):
-                    print("mi posicion no es valida me voy del espectaculo")
+                    print("Mi posicion no es valida me voy del espectaculo")
                     cliente.close()
                     fallo = True
                 self.destino = Coordenada(x, y)
