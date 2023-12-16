@@ -1,13 +1,20 @@
 const express = require('express');
-const app = express();
+const https = require('https');
+const fs = require('fs');
 const path = require('path');
 
-const PORT = process.env.PORT || 3002; // Puerto en el que se ejecutará el servidor
+const app = express();
 
-// Sirve archivos estáticos (HTML, CSS, JavaScript) desde la carpeta actual
+const PORT = process.env.PORT || 3002;
+
+const opcionesSSL = {
+  key: fs.readFileSync('/home/lpv24/Escritorio/SD/SD/Groso/Api_Engine/key.pem'),
+  cert: fs.readFileSync('/home/lpv24/Escritorio/SD/SD/Groso/Api_Engine/cert.pem')
+};
+
 app.use(express.static(path.join(__dirname)));
 
-// Inicia el servidor
-app.listen(PORT, () => {
-  console.log(`Servidor iniciado en http://localhost:${PORT}`);
+// Crea el servidor HTTPS
+https.createServer(opcionesSSL, app).listen(PORT, () => {
+  console.log(`Servidor iniciado en https://localhost:${PORT}`);
 });

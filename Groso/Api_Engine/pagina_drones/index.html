@@ -9,8 +9,8 @@
 
 <body>
   <div class="informacion-ciudad">
-    <p id="nombreCiudad">Ciudad:</p>
-    <p id="temperatura">Temperatura:</p>
+    <p><span id="nombreCiudadStatic">Ciudad: </span><span id="nombreCiudad"></span></p>
+    <p><span id="temperaturaStatic">Temperatura: </span><span id="temperatura"></span></p>
   </div>
   <div class="columna-numeros">
     <!-- Números de fila -->
@@ -117,13 +117,55 @@
           });
     }
 
-    
+    function obtenerDatosCiudad() {
+  // URL de la API que proporciona la información de la ciudad y la temperatura
+  const apiUrl = 'https://localhost:3001/obtener_clima'; // Reemplaza con la URL de tu API
+
+  fetch(apiUrl)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('No se pudo obtener los datos de la ciudad y temperatura');
+      }
+      return response.json();
+    })
+    .then(data => {
+      // Supongamos que la API devuelve un objeto con los datos de la ciudad y la temperatura
+      let nombreCiudad = data.clima[0]; // Reemplaza con la clave adecuada para el nombre de la ciudad
+      let temperatura = data.clima[1]; // Reemplaza con la clave adecuada para la temperatura
+
+      // Actualizar el contenido en el elemento HTML
+      const ciudadElemento = document.getElementById('nombreCiudad');
+      const temperaturaElemento = document.getElementById('temperatura');
+
+      if(temperatura>0){
+        // Aplicar estilo al texto para cambiar el color a verde
+        ciudadElemento.textContent = nombreCiudad;
+        ciudadElemento.style.color = 'green';
+
+        temperaturaElemento.textContent = temperatura + ' °C';
+        temperaturaElemento.style.color = 'green';
+      }else{
+        // Aplicar estilo al texto para cambiar el color a rojo
+        ciudadElemento.textContent = nombreCiudad;
+        ciudadElemento.style.color = 'red';
+
+        temperaturaElemento.textContent = temperatura + ' °C';
+        temperaturaElemento.style.color = 'red';
+      }
+    })
+    .catch(error => {
+      console.error('Error al obtener datos de la API:', error);
+    });
+}
 
     // Llamar a la función por primera vez
     obtenerDatosDeAPI();
+    obtenerDatosCiudad();
 
     // Ejecutar la función cada 5 segundos (por ejemplo)
     setInterval(obtenerDatosDeAPI, 500); // El número representa milisegundos (5 segundos en este caso)
+    // Ejecutar la función cada 5 segundos (por ejemplo)
+    setInterval(obtenerDatosCiudad, 2000);
   </script>
 </body>
 

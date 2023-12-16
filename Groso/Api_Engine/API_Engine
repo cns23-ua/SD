@@ -66,6 +66,21 @@ class Engine {
         }
         return posicionesNoCero;
     }
+
+    leerTempDesdeJSON() {
+        try {
+            if (fs.existsSync(this.registryFileName)) {
+                const data = fs.readFileSync(this.registryFileName, 'utf8');
+                const clima = JSON.parse(data).clima; // Suponiendo que 'mapa' es la clave donde está el mapa en BD.json
+                return clima;
+            } else {
+                throw new Error("El archivo JSON del registro no existe o está vacío");
+            }
+        } catch (err) {
+            console.error('Error al leer el archivo JSON:', err);
+            return null;
+        }
+    }
 }
 
 const engine = new Engine();
@@ -88,6 +103,12 @@ router.get('/ids_verificados', (req, res) => {
 router.get('/obtener_mapa', (req, res) => {
     const datosMapaProcesado = engine.procesarMapa(); // Obtén el mapa procesado
     res.json({ datosMapaProcesado });
+});
+
+
+router.get('/obtener_clima', (req, res) => {
+    const clima = engine.leerTempDesdeJSON(); // Obtén el mapa procesado
+    res.json({ clima });
 });
 
 const app = express();

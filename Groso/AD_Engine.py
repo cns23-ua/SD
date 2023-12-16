@@ -17,6 +17,7 @@ from kafka import KafkaConsumer
 from json import loads
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from datetime import datetime
 
 # Desactivar las advertencias de solicitud no segura debido a certificados autofirmados
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -43,8 +44,9 @@ class AD_Engine:
         self.puerto_weather = puerto_weather
         self.figuras = ""
         self.drones = []
-        self.ciudad = "Marvella"
+        self.ciudad = ""
         self.url_api_eng = "https://localhost:3001"
+        self.mostrar_mapa = False
         
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
@@ -138,6 +140,7 @@ class AD_Engine:
         for id_s in self.drones:
             if id_s not in id_recibidos:
                 print("Hemos perdido el dron: ", id_s)
+                self.actualizar_logs_json(f"Ha caído el dron {id_s}.\n")
                 self.mapa.borrar_del_mapa(id_s)
                 self.drones = [x for x in self.drones if x != id_s]
                 dron_menos=-1
@@ -161,7 +164,8 @@ class AD_Engine:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(ADDR_wth)
 
-            print (f"Establecida conexión (weather) en [{ADDR_wth}]")  
+            print (f"Establecida conexión (weather) en [{ADDR_wth}]")
+            self.actualizar_logs_json("Situaciones climáticas adversas, los drones vuelven a casa.\n")  
             
             self.enviar_mensaje(client, self.ciudad)
                     
@@ -239,7 +243,7 @@ class AD_Engine:
                     response = requests.get(url, verify=False)
                     if response.status_code == 200:
                         data = response.json()  # Obtener el diccionario desde la respuesta JSON
-                        ids_verificados = data.get('idsVerificados', [])  # Obtener la lista de IDs verificados del diccionario                        print(ids_verificados)
+                        ids_verificados = data.get('idsVerificados', [])  # Obtener la lista de IDs verificados del diccionario  
                         if id in ids_verificados:
                             print(f"El ID {id} está en la lista de IDs verificados.")
                             message_to_send = "Dron verificado"
@@ -248,6 +252,7 @@ class AD_Engine:
                             return True
                         else:
                             print(f"El ID {id} no está en la lista de IDs verificados.")
+                            self.actualizar_logs_json(f"El dron {id} no ha podido conectarse al engine.\n")
                             message_to_send = "Rechazado"
                             self.enviar_mensaje(conn, message_to_send)
                             return False                    
@@ -305,21 +310,21 @@ class AD_Engine:
         self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
         
     def figura_completada(self):
+        print("Figura completada.")
         root = tk.Tk()
         tablero = Tablero(root, 20, 20)
         tablero.cuadros=self.mapa.cuadros
-        tablero.dibujar_tablero()
+        if self.mostrar_mapa == True:
+            tablero.dibujar_tablero()
 
     def obtener_temperatura(self, api_key):
-        ciudad = ""
         # Cargar el archivo JSON
         with open("ciudades.json") as file:
             datos = json.load(file)
 
-        ciudad = str(datos["ciudad"])
-        print("Ciudad: ", ciudad)
+        self.ciudad = str(datos["ciudad"])
         
-        url = f'http://api.openweathermap.org/data/2.5/weather?q={ciudad}&appid={api_key}&units=metric'
+        url = f'http://api.openweathermap.org/data/2.5/weather?q={self.ciudad}&appid={api_key}&units=metric'
         # 'units=metric' para obtener la temperatura en grados Celsius
 
 
@@ -327,25 +332,10 @@ class AD_Engine:
         if response.status_code == 200:
             datos_clima = response.json()
             temperatura = datos_clima['main']['temp']
-            print("Esta es la temperatura:",temperatura)
             return temperatura
         else:
             print("Error al obtener la temperatura:", response.status_code)
             return "Fallo"
-        
-    def introducir_mapa_json(self):
-        with open('BD.json', 'r') as file:
-            data = json.load(file)
-        
-        # Convertir el mapa de Python a JSON
-        mapa_json = json.dumps({"mapa": self.mapa.cuadros})
-
-        # Agregar la clave "mapa" con los datos del mapa
-        data["mapa"] = self.mapa.cuadros
-
-        # Guardar los cambios en el archivo
-        with open('BD.json', 'w') as file:
-            json.dump(data, file, indent=2)
             
     def actualizar_mapa_json(self):
         # Cargar el archivo JSON existente
@@ -358,7 +348,54 @@ class AD_Engine:
         # Guardar los cambios en el archivo
         with open('BD.json', 'w') as file:
             json.dump(data, file)
+            
+    def actualizar_tem_ciudad_json(self, ciudad, temp):
+        # Cargar el archivo JSON existente
+        with open('BD.json', 'r') as file:
+            data = json.load(file)
+                    
+        # Actualizar los datos existentes con los nuevos datos
+        data["clima"] = [ciudad, temp]
 
+        # Guardar los cambios en el archivo
+        with open('BD.json', 'w') as file:
+            json.dump(data, file)
+            
+    def actualizar_logs_json(self, newlog):
+        # Cargar el archivo JSON existente
+        with open('BD.json', 'r') as file:
+            data = json.load(file)
+            
+        newlog = f"[{self.obtener_ip()}][{self.obtener_fecha_hora()}] {newlog}"
+                    
+        if 'logs' in data:
+            logs = data["logs"]
+            # Actualizar los datos existentes con los nuevos datos
+            logs.append(newlog)
+            data["logs"] = logs
+        else:
+            data["logs"] = [newlog]
+            
+        # Guardar los cambios en el archivo
+        with open('BD.json', 'w') as file:
+            json.dump(data, file)
+            
+    def obtener_ip(self):
+        hostname = socket.gethostname()
+        ip_address = socket.gethostbyname(hostname)
+        return ip_address
+    
+    
+    def obtener_fecha_hora(self):
+        # Obtiene la fecha y hora actuales
+        fecha_hora_actual = datetime.now()
+        
+        # Convierte la fecha y la hora en strings
+        fecha_actual = fecha_hora_actual.strftime("%Y-%m-%d")  # Formato: Año-Mes-Día
+        hora_actual = fecha_hora_actual.strftime("%H:%M:%S")  # Formato: Hora:Minutos:Segundos
+        
+        return f"{fecha_actual} {hora_actual}"
+    
             
     def handle_client(self, conn, addr):
         print(f"[NUEVA CONEXION] {addr} connected.")
@@ -368,6 +405,7 @@ class AD_Engine:
             CONEX_ACTIVAS = CONEX_ACTIVAS - 1
             conn.close()
             return False
+        self.actualizar_logs_json("Nuevo dron conectado con engine.\n")
         
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         #weather = self.contactar_weather(ip_weather, puerto_weather)
@@ -390,14 +428,16 @@ class AD_Engine:
             #print("N_drones ", n_drones)
 
             if CONEX_ACTIVAS == n_drones:
-                self.introducir_mapa_json()
+                self.actualizar_mapa_json()
+                self.actualizar_tem_ciudad_json(self.ciudad, weather)
                 
                 if(weather!="Fallo"):
                     if(weather>0):
                             self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")    
                             self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                             self.actualizar_mapa_json()
-                            self.dibujar_tablero_engine()
+                            if self.mostrar_mapa == True:
+                                self.dibujar_tablero_engine()
 
                             salimos = False
                             while (salimos==False):
@@ -406,18 +446,22 @@ class AD_Engine:
                                 n_drones=n_drones + resta       
                                 CONEX_ACTIVAS = CONEX_ACTIVAS + resta
                                 self.actualizar_mapa_json()
-                                self.dibujar_tablero_engine()               
+                                if self.mostrar_mapa == True:
+                                    self.dibujar_tablero_engine()               
                                 salimos = self.acabada_figura(n_fig)
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Nada")
                                 self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                                 weather = self.obtener_temperatura("73d22518c7b690c635b670eb9a918309")
+                                self.actualizar_tem_ciudad_json(self.ciudad, weather)
                                 if(weather=="Fallo" or weather<=0):
                                     break
                                              
                             if(salimos==True):           
                                 self.figura_completada()
+                                self.actualizar_logs_json(f"Figura {n_fig} acabada.\n")
                                 
                             if (n_fig==len(self.figuras)):
+                                print("Todas las figuras acabads, volvemos a casa.")
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
                                 self.volver_a_base(n_fig)
                                 acabamos = False
@@ -426,8 +470,9 @@ class AD_Engine:
                                     resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
                                     n_drones=n_drones + resta 
                                     NEX_ACTIVAS = CONEX_ACTIVAS + resta
-                                    self.actualizar_mapa_json()             
-                                    self.dibujar_tablero_engine()               
+                                    self.actualizar_mapa_json()    
+                                    if self.mostrar_mapa == True:         
+                                        self.dibujar_tablero_engine()               
                                     acabamos = self.acabado_espectaculo(n_fig, CONEX_ACTIVAS)
                                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
                                     self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)                            
@@ -435,6 +480,7 @@ class AD_Engine:
                             if (weather != "Fallo" and weather<1):
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
                                 print("Volvemos a casa, situaciones climáticas adversas")
+                                self.actualizar_logs_json("Situaciones climáticas adversas, los drones vuelven a casa.\n")
                                 self.volver_a_base(n_fig)
                                 acabamos = False
                                 while (acabamos==False):
@@ -442,8 +488,9 @@ class AD_Engine:
                                     resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
                                     n_drones=n_drones + resta       
                                     CONEX_ACTIVAS = CONEX_ACTIVAS + resta
-                                    self.actualizar_mapa_json()                               
-                                    self.dibujar_tablero_engine()               
+                                    self.actualizar_mapa_json()
+                                    if self.mostrar_mapa == True:                               
+                                        self.dibujar_tablero_engine()               
                                     acabamos = self.acabado_espectaculo(n_fig, n_drones)
                                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
                                     self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
@@ -452,6 +499,7 @@ class AD_Engine:
                             elif (weather=="Fallo"):
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "No tiempo")
                                 print("No podemos contactar con weather, volvemos a casa")
+                                self.actualizar_logs_json("No podemos contactar con weather, los drones vuelven a casa.\n")
                                 self.volver_a_base(n_fig)
                                 acabamos = False
                                 while (acabamos==False):
@@ -459,17 +507,20 @@ class AD_Engine:
                                     resta=self.recibir_posiciones(self.ip_broker, self.puerto_broker, n_fig)
                                     n_drones=n_drones + resta       
                                     CONEX_ACTIVAS = CONEX_ACTIVAS + resta
-                                    self.actualizar_mapa_json()                                  
-                                    self.dibujar_tablero_engine()               
+                                    self.actualizar_mapa_json()  
+                                    if self.mostrar_mapa == True:                                
+                                        self.dibujar_tablero_engine()               
                                     acabamos = self.acabado_espectaculo(n_fig, n_drones)
                                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "No tiempo")
                                     self.notificar_destinos(self.figuras, n_fig, self.ip_broker, 9092)
                                 break
                     else:
                         print("CONDICIONES CLIMATICAS ADVERSAS ESPECTACULO FINALIZADO")
+                        self.actualizar_logs_json("Situaciones climáticas adversas, los drones vuelven a casa.\n")
                         self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Mal tiempo")
                 else:
                     print("No se puede contactar con weather, no podemos iniciar el vuelo") 
+                    self.actualizar_logs_json("No podemos contactar con weather, los drones vuelven a casa.\n")
                     self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "No tiempo")
                     
       
@@ -498,7 +549,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras_correccion.json"
+    fichero="AwD_figuras.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
