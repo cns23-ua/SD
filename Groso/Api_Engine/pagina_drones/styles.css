@@ -94,17 +94,26 @@ body {
   }
 
   .info-window {
-    max-height: 600px; /* Altura máxima de la ventana */
-    overflow-y: scroll; /* Habilita la barra de desplazamiento vertical */
+    max-height: 100px; /* Altura máxima de la ventana */
     border: 2px solid #ccc; /* Borde para la ventana */
     padding: 100px 0px 400px; /* Espaciado interno */
     background-color: #f9f9f9; /* Color de fondo */
     margin-bottom: 20px; /* Margen inferior para separar de otros elementos */
-    width: 200px;
+    width: 250px;
     margin: 10px auto;
     border-radius: 8px;
   }
   
-  /*#info-content {
-  }*/
+  #info-content {
+    padding: 10px; /* Espaciado interno */
+    border: 1px solid #ccc; /* Borde */
+    background-color: #f9f9f9; /* Color de fondo */
+    max-height: 400px; /* Altura máxima para permitir desplazamiento vertical */
+    overflow-y: auto; /* Mostrar barra de desplazamiento si es necesario */
+  }
   
+  #info-content p {
+    margin: 5px 0; /* Margen entre logs */
+    padding: 5px; /* Espaciado interno */
+    border-bottom: 1px solid #ddd; /* Borde inferior para separar logs */
+  }

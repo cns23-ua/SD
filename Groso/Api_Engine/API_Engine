@@ -71,7 +71,7 @@ class Engine {
         try {
             if (fs.existsSync(this.registryFileName)) {
                 const data = fs.readFileSync(this.registryFileName, 'utf8');
-                const clima = JSON.parse(data).clima; // Suponiendo que 'mapa' es la clave donde está el mapa en BD.json
+                const clima = JSON.parse(data).clima; // Suponiendo que 'clima' es la clave donde está el mapa en BD.json
                 return clima;
             } else {
                 throw new Error("El archivo JSON del registro no existe o está vacío");
@@ -79,6 +79,45 @@ class Engine {
         } catch (err) {
             console.error('Error al leer el archivo JSON:', err);
             return null;
+        }
+    }
+
+    leerLogsDesdeJSON() {
+        try {
+            if (fs.existsSync(this.registryFileName)) {
+                const data = fs.readFileSync(this.registryFileName, 'utf8');
+                const logs = JSON.parse(data).logs; // Suponiendo que 'logs' es la clave donde está el mapa en BD.json
+                return logs;
+            } else {
+                throw new Error("El archivo JSON del registro no existe o está vacío");
+            }
+        } catch (err) {
+            console.error('Error al leer el archivo JSON:', err);
+            return null;
+        }
+    }
+
+    // Función para agregar logs al archivo JSON
+    agregarLogAlJSON(newLog) {
+        try {
+            if (fs.existsSync(this.registryFileName)) {
+                const data = fs.readFileSync(this.registryFileName, 'utf8');
+                const jsonData = JSON.parse(data);
+
+                if (!jsonData.logs) {
+                    jsonData.logs = []; // Si no hay un array de logs, créalo
+                }
+
+                jsonData.logs.push(newLog); // Agrega el nuevo log al array
+
+                fs.writeFileSync(this.registryFileName, JSON.stringify(jsonData, null, 2));
+                return { message: "Log agregado correctamente" };
+            } else {
+                throw new Error("El archivo JSON del registro no existe o está vacío");
+            }
+        } catch (err) {
+            console.error('Error al añadir log al archivo JSON:', err);
+            return { error: "Error al añadir el log al archivo JSON" };
         }
     }
 }
@@ -105,10 +144,23 @@ router.get('/obtener_mapa', (req, res) => {
     res.json({ datosMapaProcesado });
 });
 
-
 router.get('/obtener_clima', (req, res) => {
     const clima = engine.leerTempDesdeJSON(); // Obtén el mapa procesado
     res.json({ clima });
+});
+
+router.get('/obtener_logs', (req, res) => {
+    const logs = engine.leerLogsDesdeJSON(); // Obtén el mapa procesado
+    res.json({ logs });
+});
+
+router.post('/agregar_log', (req, res) => {
+    const { nuevoLog } = req.body; // Suponiendo que el cuerpo de la solicitud tiene un campo "nuevoLog"
+    if (!nuevoLog) {
+        return res.status(400).json({ error: "Falta el nuevo log" });
+    }
+    const resultado = engine.agregarLogAlJSON(nuevoLog);
+    res.json(resultado);
 });
 
 const app = express();

@@ -59,113 +59,145 @@
 
     function obtenerDatosDeAPI() {
      // URL de la API donde se encuentra el mapa
-        const url = 'https://localhost:3001/obtener_mapa';
+      const url = 'https://localhost:3001/obtener_mapa';
 
-        // Configurar la solicitud a la API (GET, POST u otro método según corresponda)
-        fetch(url)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('No se pudo obtener el mapa');
-            }
-            return response.json();
-          })
-          .then(mapaData => {
-            datosAPI = mapaData.datosMapaProcesado
-            const casillas = document.querySelectorAll('#tablero > div');
+      // Configurar la solicitud a la API (GET, POST u otro método según corresponda)
+      fetch(url)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('No se pudo obtener el mapa');
+          }
+          return response.json();
+        })
+        .then(mapaData => {
+          datosAPI = mapaData.datosMapaProcesado
+          const casillas = document.querySelectorAll('#tablero > div');
 
-            casillas.forEach(casilla => {
-              const coords = casilla.id.split(',');
-              const coordX = parseInt(coords[0]);
-              const coordY = parseInt(coords[1]);
+          casillas.forEach(casilla => {
+            const coords = casilla.id.split(',');
+            const coordX = parseInt(coords[0]);
+            const coordY = parseInt(coords[1]);
 
-              coordenadaEncontrada = null
+            coordenadaEncontrada = null
 
-              let x = null;
-              let y = null;
-              let id = null;
-              let color = null;
+            let x = null;
+            let y = null;
+            let id = null;
+            let color = null;
 
-              for (let i = 0; i < datosAPI.length; i++) {
-                const subArray = datosAPI[i];
-                x = subArray[0];
-                y = subArray[1];
-                id = subArray[2];
-                color = subArray[3];
-                if (coordX == x+1 && coordY == y+1) {
-                  casilla.style.backgroundColor = color;
-                  // Crea un elemento de texto (span) para mostrar el número
-                  const numeroCasilla = casilla.querySelector('.numero-casilla');
-                  if (!numeroCasilla) {
-                    const numero = document.createElement('span');
-                    numero.textContent = id; // Coloca aquí el número que deseas mostrar
-                    numero.classList.add('numero-casilla'); // Agrega una clase para el estilo
-                    casilla.appendChild(numero); // Agrega el número a la casilla
-                  }
-                  break; // Detener el bucle una vez que se encuentren los elementos
-                }else{
-                  const numeroCasilla = casilla.querySelector('.numero-casilla');
-                  if (numeroCasilla) {
-                    casilla.removeChild(numeroCasilla);
-                  }
-                  casilla.style.backgroundColor = "#ccc";
+            for (let i = 0; i < datosAPI.length; i++) {
+              const subArray = datosAPI[i];
+              x = subArray[0];
+              y = subArray[1];
+              id = subArray[2];
+              color = subArray[3];
+              if (coordX == x+1 && coordY == y+1) {
+                casilla.style.backgroundColor = color;
+                // Crea un elemento de texto (span) para mostrar el número
+                const numeroCasilla = casilla.querySelector('.numero-casilla');
+                if (!numeroCasilla) {
+                  const numero = document.createElement('span');
+                  numero.textContent = id; // Coloca aquí el número que deseas mostrar
+                  numero.classList.add('numero-casilla'); // Agrega una clase para el estilo
+                  casilla.appendChild(numero); // Agrega el número a la casilla
                 }
+                break; // Detener el bucle una vez que se encuentren los elementos
+              }else{
+                const numeroCasilla = casilla.querySelector('.numero-casilla');
+                if (numeroCasilla) {
+                  casilla.removeChild(numeroCasilla);
+                }
+                casilla.style.backgroundColor = "#ccc";
               }
-            });
-          })
-          .catch(error => {
-            console.error('Error al obtener el mapa:', error);
+            }
           });
+        })
+        .catch(error => {
+          console.error('Error al obtener el mapa:', error);
+        });
     }
 
     function obtenerDatosCiudad() {
-  // URL de la API que proporciona la información de la ciudad y la temperatura
-  const apiUrl = 'https://localhost:3001/obtener_clima'; // Reemplaza con la URL de tu API
+      // URL de la API que proporciona la información de la ciudad y la temperatura
+      const apiUrl = 'https://localhost:3001/obtener_clima'; // Reemplaza con la URL de tu API
 
-  fetch(apiUrl)
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('No se pudo obtener los datos de la ciudad y temperatura');
-      }
-      return response.json();
-    })
-    .then(data => {
-      // Supongamos que la API devuelve un objeto con los datos de la ciudad y la temperatura
-      let nombreCiudad = data.clima[0]; // Reemplaza con la clave adecuada para el nombre de la ciudad
-      let temperatura = data.clima[1]; // Reemplaza con la clave adecuada para la temperatura
+      fetch(apiUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('No se pudo obtener los datos de la ciudad y temperatura');
+          }
+          return response.json();
+        })
+        .then(data => {
+          // Supongamos que la API devuelve un objeto con los datos de la ciudad y la temperatura
+          let nombreCiudad = data.clima[0]; // Reemplaza con la clave adecuada para el nombre de la ciudad
+          let temperatura = data.clima[1]; // Reemplaza con la clave adecuada para la temperatura
 
-      // Actualizar el contenido en el elemento HTML
-      const ciudadElemento = document.getElementById('nombreCiudad');
-      const temperaturaElemento = document.getElementById('temperatura');
+          // Actualizar el contenido en el elemento HTML
+          const ciudadElemento = document.getElementById('nombreCiudad');
+          const temperaturaElemento = document.getElementById('temperatura');
 
-      if(temperatura>0){
-        // Aplicar estilo al texto para cambiar el color a verde
-        ciudadElemento.textContent = nombreCiudad;
-        ciudadElemento.style.color = 'green';
+          if(temperatura>0){
+            // Aplicar estilo al texto para cambiar el color a verde
+            ciudadElemento.textContent = nombreCiudad;
+            ciudadElemento.style.color = 'green';
 
-        temperaturaElemento.textContent = temperatura + ' °C';
-        temperaturaElemento.style.color = 'green';
-      }else{
-        // Aplicar estilo al texto para cambiar el color a rojo
-        ciudadElemento.textContent = nombreCiudad;
-        ciudadElemento.style.color = 'red';
+            temperaturaElemento.textContent = temperatura + ' °C';
+            temperaturaElemento.style.color = 'green';
+          }else{
+            // Aplicar estilo al texto para cambiar el color a rojo
+            ciudadElemento.textContent = nombreCiudad;
+            ciudadElemento.style.color = 'red';
 
-        temperaturaElemento.textContent = temperatura + ' °C';
-        temperaturaElemento.style.color = 'red';
-      }
-    })
-    .catch(error => {
-      console.error('Error al obtener datos de la API:', error);
-    });
-}
+            temperaturaElemento.textContent = temperatura + ' °C';
+            temperaturaElemento.style.color = 'red';
+          }
+        })
+        .catch(error => {
+          console.error('Error al obtener datos de la API:', error);
+      });
+    }
+
+    function obtenerLogs() {
+      // URL de la API que proporciona la información de la ciudad y la temperatura
+      const apiUrl = 'https://localhost:3001/obtener_logs'; // Reemplaza con la URL de tu API
+
+      fetch(apiUrl)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('No se pudo obtener los datos de la ciudad y temperatura');
+          }
+          return response.json();
+        })
+        .then(data => {
+          const infoContent = document.getElementById('info-content'); // Elemento donde mostrar los logs
+
+          // Limpiar el contenido existente en info-content antes de agregar nuevos logs
+          infoContent.innerHTML = '';
+
+          // Iterar sobre los logs recibidos y añadirlos al contenedor
+          data.logs.forEach(log => {
+            const logElement = document.createElement('p');
+            logElement.textContent = log; // Asignar el contenido del log al elemento <p>
+            infoContent.appendChild(logElement); // Agregar el log al contenedor
+          });
+        })
+        .catch(error => {
+          console.error('Error al obtener datos de la API:', error);
+      });
+    }
 
     // Llamar a la función por primera vez
     obtenerDatosDeAPI();
     obtenerDatosCiudad();
+    obtenerLogs();
 
     // Ejecutar la función cada 5 segundos (por ejemplo)
     setInterval(obtenerDatosDeAPI, 500); // El número representa milisegundos (5 segundos en este caso)
     // Ejecutar la función cada 5 segundos (por ejemplo)
     setInterval(obtenerDatosCiudad, 2000);
+    // Ejecutar la función cada 5 segundos (por ejemplo)
+    setInterval(obtenerLogs, 2000);
   </script>
 </body>
 

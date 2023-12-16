@@ -1,3 +1,4 @@
+import datetime
 from coordenada import *
 import socket
 import sys
@@ -19,6 +20,7 @@ from confluent_kafka import KafkaException, KafkaError
 import requests
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import threading
+from datetime import datetime
 
 # Desactivar las advertencias de solicitud no segura debido a certificados autofirmados
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -466,6 +468,10 @@ class Dron:
                         if (self.recibir_destino("127.0.0.1", 9092,6,cliente)):
                             break
                         mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                        if cont == 0:
+                            self.actualizar_logs_json("He conectado con registry y engine exitosamente.")
+                            self.actualizar_logs_json("Empezamos el espectáculo")
+                            cont = cont+1
                         if mapa_actualizado_cuadros != self.mapa.cuadros:
                             self.mapa.cuadros = mapa_actualizado_cuadros
                             pos_vieja = self.coordenada
@@ -621,6 +627,36 @@ class Dron:
                         return 
         if dentro == False:
             print("Este dron no está registrado.")
+            
+            
+    def actualizar_logs_json(self, newlog):
+        # Hacer una solicitud a la API para agregar el log
+        url_api = url = f"{self.url_api_eng}/agregar_log"  # Reemplaza con la URL de tu API
+        headers = {'Content-Type': 'application/json'}
+
+        # Realizar la solicitud POST a la API
+        try:
+            response = requests.post(url_api, verify=False, headers=headers, json={'nuevoLog': f"[{self.obtener_ip()}] [{self.obtener_fecha_hora()}] {newlog}"})
+            response.raise_for_status()  # Verificar si la solicitud fue exitosa
+            print("Log agregado a la API correctamente")
+        except requests.exceptions.RequestException as e:
+            print(f"Error al agregar el log a la API: {e}")
+        
+    def obtener_ip(self):
+        hostname = socket.gethostname()
+        ip_address = socket.gethostbyname(hostname)
+        return ip_address
+    
+    
+    def obtener_fecha_hora(self):
+        # Obtiene la fecha y hora actuales
+        fecha_hora_actual = datetime.now()
+        
+        # Convierte la fecha y la hora en strings
+        fecha_actual = fecha_hora_actual.strftime("%Y-%m-%d")  # Formato: Año-Mes-Día
+        hora_actual = fecha_hora_actual.strftime("%H:%M:%S")  # Formato: Hora:Minutos:Segundos
+        
+        return f"{fecha_actual} {hora_actual}"
         
                 
     # *Menú del dron para interactuar con registry
@@ -679,6 +715,11 @@ class Dron:
                         if (self.recibir_destino("127.0.0.1", 9092,6,cliente)):
                             break
                         mapa_actualizado_cuadros = self.recibir_mapa("127.0.0.1", 9092)
+                        if cont == 0:
+                            print("me estoy metiendo")
+                            self.actualizar_logs_json("He conectado con registry y engine exitosamente.")
+                            self.actualizar_logs_json("Empezamos el espectáculo")
+                            cont = cont+1
                         if mapa_actualizado_cuadros != self.mapa.cuadros:
                             self.mapa.cuadros = mapa_actualizado_cuadros
                             pos_vieja = self.coordenada

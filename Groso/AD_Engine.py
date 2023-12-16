@@ -140,7 +140,7 @@ class AD_Engine:
         for id_s in self.drones:
             if id_s not in id_recibidos:
                 print("Hemos perdido el dron: ", id_s)
-                self.actualizar_logs_json(f"Ha caído el dron {id_s}.\n")
+                self.actualizar_logs_json(f"Ha caido el dron {id_s}.\n")
                 self.mapa.borrar_del_mapa(id_s)
                 self.drones = [x for x in self.drones if x != id_s]
                 dron_menos=-1
@@ -405,8 +405,6 @@ class AD_Engine:
             CONEX_ACTIVAS = CONEX_ACTIVAS - 1
             conn.close()
             return False
-        self.actualizar_logs_json("Nuevo dron conectado con engine.\n")
-        
         self.mapa.introducir_en_posicion(1,1,([self.drones[len(self.drones)-1]],1,"red"))
         #weather = self.contactar_weather(ip_weather, puerto_weather)
         weather = self.obtener_temperatura("73d22518c7b690c635b670eb9a918309")
@@ -461,7 +459,8 @@ class AD_Engine:
                                 self.actualizar_logs_json(f"Figura {n_fig} acabada.\n")
                                 
                             if (n_fig==len(self.figuras)):
-                                print("Todas las figuras acabads, volvemos a casa.")
+                                print("Todas las figuras acabadas, volvemos a casa.")
+                                self.actualizar_logs_json(f"Todas las figuras completadas, los drones vuelven a casa.\n")
                                 self.notificar_motivo_vuelta_base(ip_broker, puerto_broker, "Acabado")
                                 self.volver_a_base(n_fig)
                                 acabamos = False
@@ -549,7 +548,7 @@ class AD_Engine:
 ######################### MAIN ##########################
 
 if (len(sys.argv) == 7):
-    fichero="AwD_figuras.json"
+    fichero="AwD_figuras_correccion.json"
     puerto_escucha = int(sys.argv[1])
     max_drones = int(sys.argv[2])
     ip_broker = sys.argv[3]
