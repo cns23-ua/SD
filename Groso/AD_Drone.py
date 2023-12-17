@@ -22,10 +22,16 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 import threading
 from datetime import datetime
 
+import ssl
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import hashes
+from base64 import b64encode, b64decode
+
 # Desactivar las advertencias de solicitud no segura debido a certificados autofirmados
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-
+KEY = "clave_secreta_32b".ljust(32, ' ').encode('utf-8')
 HEADER = 64
 FORMAT = 'utf-8'
 
@@ -43,6 +49,36 @@ class Dron:
         self.url_api = "https://localhost:3000"
         self.url_api_eng = "https://localhost:3001"
         
+        
+    def encrypt_message(self, message, key):
+        iv = b'\x00' * 12  # Vector de inicialización (puedes generar uno de forma segura)
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(message.encode()) + encryptor.finalize()
+
+        # Obtén el tag de autenticación
+        tag = encryptor.tag
+        print("el length del tag es:" , len(tag))
+
+        return b64encode(iv + ciphertext + tag).decode('utf-8')
+
+    def decrypt_message(self, ciphertext, key):
+        # Decodifica la cadena base64
+        ciphertexta = b64decode(ciphertext.encode('utf-8'))
+
+        # Extrae el IV y el tag
+        
+        iv = ciphertexta[:12]
+        ciphertext = ciphertexta[12:-16]
+        tag = ciphertexta[-16:]
+
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
+        decryptor = cipher.decryptor()
+
+        # Desencripta el mensaje
+        decrypted_message = decryptor.update(ciphertext) + decryptor.finalize()
+        return decrypted_message.decode('utf-8')
+    
     # *Movemos el dron dónde le corresponde y verificamos si ha llegado a la posición destino
     def mover(self, pos_fin):
         self.coordenada = self.siguiente_mov(pos_fin)
@@ -56,6 +92,10 @@ class Dron:
             message = client.recv(msg_length).decode(FORMAT)
 
         return message
+    
+    def  receive_message_ssl(self,ssock):
+        data = ssock.recv(1024)
+        return data.decode('utf-8')
         
     # *Encontramos el siguiente movimiento que debe hacer
     def siguiente_mov(self, pos_fin):
@@ -100,6 +140,7 @@ class Dron:
 
             if msg:
                 mensaje = loads(next(iter(msg.values()))[0].value.decode('utf-8'))
+                mensaje = self.decrypt_message(mensaje,KEY)
                 self.destino = eval(mensaje)[self.id]
                 x, y = map(int, self.destino.split(","))
                 if((x > 20 or x < 1) or (y > 20 or y < 1)):
@@ -150,6 +191,7 @@ class Dron:
             for msg in consumer:
                 if msg.value:
                     mensaje = loads(msg.value.decode('utf-8'))
+                    mensaje = self.decrypt_message(mensaje,KEY)
                     print("Mensaje: ", mensaje)
                     if(mensaje=="No tiempo"):
                         print("No podemos contactar con weather, volvemos a casa")
@@ -185,9 +227,15 @@ class Dron:
         #cadena = f"Id: ({self.id}) vieja: ({pos_vieja.x},{pos_vieja.y}) nueva: ({self.coordenada.x },{self.coordenada.y})" 
         cadena = f"{self.id},{pos_vieja.x},{pos_vieja.y},{self.coordenada.x },{self.coordenada.y}"
         time.sleep(0.3)
-        producer.send(topic, dumps(cadena).encode('utf-8'))
+        msg = self.encrypt_message(cadena,KEY)
+        producer.send(topic, dumps(msg).encode('utf-8'))
         producer.flush()
     
+    
+    def enviar_mensaje_ssl(self, cliente, msg):
+        mensaje_bytes = msg.encode('utf-8')
+        cliente.send(mensaje_bytes) 
+        
     # * Funcion que envia un mensaje al servidor
     def enviar_mensaje(self, cliente, msg): 
         message = msg.encode(FORMAT)
@@ -211,28 +259,29 @@ class Dron:
         
         try:
             ADDR_eng = (SERVER_eng, PORT_eng)
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(ADDR_eng)
-        
-            print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
-            message = f"{self.alias} {self.id} {self.token}"      
-            self.enviar_mensaje(client, message)
-            
-            orden = ""
-            while orden == "":
-                orden = self.receive_message(client)
-                orden_preparada = orden.split(" ")
-                
-            if orden == "Rechazado":
-                print("Conexión rechazada por el engine")
-                client.close()
-            else:
-                self.borrar_token_api()
-                return client
+            context = ssl._create_unverified_context()
+            with socket.create_connection(ADDR_eng) as sock:
+                with context.wrap_socket(sock,server_hostname=SERVER_eng)as ssock:
+    
+                    print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
+                    message = f"{self.alias} {self.id} {self.token}"      
+                    self.enviar_mensaje_ssl(ssock, message)
+                    
+                    orden = ""
+                    while orden == "":
+                        orden = self.receive_message_ssl(ssock)
+                        orden_preparada = orden.split(" ")
+                        
+                    if orden == "Rechazado":
+                        print("Conexión rechazada por el engine")
+                        ssock.close()
+                    else:
+                        self.borrar_token_api()
+                        return ssock
         except Exception as e:
             print(f"No se ha podido establecer conexión (engine): {e}")
             if 'client' in locals():
-                client.close()
+                ssock.close()
     
     def conectar_verify_engine_API(self, SERVER_eng, PORT_eng):   
         self.generar_token_api()
@@ -259,29 +308,30 @@ class Dron:
                     
             if resultado == "Exito":
                 ADDR_eng = (SERVER_eng, PORT_eng)
-                client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                client.connect(ADDR_eng)
+                context = ssl._create_unverified_context()
+                with socket.create_connection(ADDR_eng) as sock:
+                    with context.wrap_socket(sock,server_hostname=SERVER_eng)as ssock:
             
-                print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
-                message = f"{self.alias} {self.id} API"     
-                print(message) 
-                self.enviar_mensaje(client, message)
-                
-                orden = ""
-                while orden == "":
-                    orden = self.receive_message(client)
-                    orden_preparada = orden.split(" ")
-                    
-                if orden == "Rechazado":
-                    print("Conexión rechazada por el engine")
-                    client.close()
-                else:
-                    self.borrar_token_api()
-                    return client
+                        print(f"Establecida conexión (engine) en [{ADDR_eng}]")          
+                        message = f"{self.alias} {self.id} API"     
+                        print(message) 
+                        self.enviar_mensaje_ssl(ssock, message)
+                        
+                        orden = ""
+                        while orden == "":
+                            orden = self.receive_message_ssl(ssock)
+                            orden_preparada = orden.split(" ")
+                            
+                        if orden == "Rechazado":
+                            print("Conexión rechazada por el engine")
+                            ssock.close()
+                        else:
+                            self.borrar_token_api()
+                            return ssock
         except Exception as e:
             print(f"No se ha podido establecer conexión (engine): {e}")
             if 'client' in locals():
-                client.close()
+                ssock.close()
     
     # *Función que comunica con el servidor(registri)
     def conectar_registri(self, server, port):              
